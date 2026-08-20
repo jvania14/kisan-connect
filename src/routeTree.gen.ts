@@ -12,9 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedCommunityRouteImport } from './routes/_authenticated/community'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedListMachineryRouteImport } from './routes/_authenticated/list-machinery'
+import { Route as AuthenticatedListingsRouteImport } from './routes/_authenticated/listings'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedResiduesRouteImport } from './routes/_authenticated/residues'
+import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as AuthenticatedMachineryIndexRouteImport } from './routes/_authenticated/machinery.index'
 import { Route as AuthenticatedMachineryIdRouteImport } from './routes/_authenticated/machinery.$id'
 
@@ -32,6 +38,16 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCommunityRoute = AuthenticatedCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -43,9 +59,30 @@ const AuthenticatedListMachineryRoute =
     path: '/list-machinery',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedListingsRoute = AuthenticatedListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedResiduesRoute = AuthenticatedResiduesRouteImport.update({
+  id: '/residues',
+  path: '/residues',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMachineryIndexRoute =
@@ -64,18 +101,30 @@ const AuthenticatedMachineryIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bookings': typeof AuthenticatedBookingsRoute
+  '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
+  '/listings': typeof AuthenticatedListingsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/residues': typeof AuthenticatedResiduesRoute
+  '/voice': typeof AuthenticatedVoiceRoute
   '/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/machinery/': typeof AuthenticatedMachineryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bookings': typeof AuthenticatedBookingsRoute
+  '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
+  '/listings': typeof AuthenticatedListingsRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/residues': typeof AuthenticatedResiduesRoute
+  '/voice': typeof AuthenticatedVoiceRoute
   '/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/machinery': typeof AuthenticatedMachineryIndexRoute
 }
@@ -84,9 +133,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+  '/_authenticated/community': typeof AuthenticatedCommunityRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/list-machinery': typeof AuthenticatedListMachineryRoute
+  '/_authenticated/listings': typeof AuthenticatedListingsRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/residues': typeof AuthenticatedResiduesRoute
+  '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/_authenticated/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/_authenticated/machinery/': typeof AuthenticatedMachineryIndexRoute
 }
@@ -95,18 +150,30 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/bookings'
+    | '/community'
     | '/dashboard'
     | '/list-machinery'
+    | '/listings'
+    | '/notifications'
     | '/profile'
+    | '/residues'
+    | '/voice'
     | '/machinery/$id'
     | '/machinery/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/bookings'
+    | '/community'
     | '/dashboard'
     | '/list-machinery'
+    | '/listings'
+    | '/notifications'
     | '/profile'
+    | '/residues'
+    | '/voice'
     | '/machinery/$id'
     | '/machinery'
   id:
@@ -114,9 +181,15 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/bookings'
+    | '/_authenticated/community'
     | '/_authenticated/dashboard'
     | '/_authenticated/list-machinery'
+    | '/_authenticated/listings'
+    | '/_authenticated/notifications'
     | '/_authenticated/profile'
+    | '/_authenticated/residues'
+    | '/_authenticated/voice'
     | '/_authenticated/machinery/$id'
     | '/_authenticated/machinery/'
   fileRoutesById: FileRoutesById
@@ -150,6 +223,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/bookings': {
+      id: '/_authenticated/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community': {
+      id: '/_authenticated/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof AuthenticatedCommunityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -164,11 +251,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListMachineryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/listings': {
+      id: '/_authenticated/listings'
+      path: '/listings'
+      fullPath: '/listings'
+      preLoaderRoute: typeof AuthenticatedListingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/residues': {
+      id: '/_authenticated/residues'
+      path: '/residues'
+      fullPath: '/residues'
+      preLoaderRoute: typeof AuthenticatedResiduesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/voice': {
+      id: '/_authenticated/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof AuthenticatedVoiceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/machinery/': {
@@ -189,17 +304,29 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
+  AuthenticatedCommunityRoute: typeof AuthenticatedCommunityRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedListMachineryRoute: typeof AuthenticatedListMachineryRoute
+  AuthenticatedListingsRoute: typeof AuthenticatedListingsRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedResiduesRoute: typeof AuthenticatedResiduesRoute
+  AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedMachineryIdRoute: typeof AuthenticatedMachineryIdRoute
   AuthenticatedMachineryIndexRoute: typeof AuthenticatedMachineryIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
+  AuthenticatedCommunityRoute: AuthenticatedCommunityRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedListMachineryRoute: AuthenticatedListMachineryRoute,
+  AuthenticatedListingsRoute: AuthenticatedListingsRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedResiduesRoute: AuthenticatedResiduesRoute,
+  AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedMachineryIdRoute: AuthenticatedMachineryIdRoute,
   AuthenticatedMachineryIndexRoute: AuthenticatedMachineryIndexRoute,
 }
