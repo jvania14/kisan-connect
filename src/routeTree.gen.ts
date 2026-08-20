@@ -13,7 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedListMachineryRouteImport } from './routes/_authenticated/list-machinery'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedMachineryIndexRouteImport } from './routes/_authenticated/machinery.index'
+import { Route as AuthenticatedMachineryIdRouteImport } from './routes/_authenticated/machinery.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,23 +37,47 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedListMachineryRoute =
+  AuthenticatedListMachineryRouteImport.update({
+    id: '/list-machinery',
+    path: '/list-machinery',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMachineryIndexRoute =
+  AuthenticatedMachineryIndexRouteImport.update({
+    id: '/machinery/',
+    path: '/machinery/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMachineryIdRoute =
+  AuthenticatedMachineryIdRouteImport.update({
+    id: '/machinery/$id',
+    path: '/machinery/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/list-machinery': typeof AuthenticatedListMachineryRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/machinery/$id': typeof AuthenticatedMachineryIdRoute
+  '/machinery/': typeof AuthenticatedMachineryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/list-machinery': typeof AuthenticatedListMachineryRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/machinery/$id': typeof AuthenticatedMachineryIdRoute
+  '/machinery': typeof AuthenticatedMachineryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +85,40 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/list-machinery': typeof AuthenticatedListMachineryRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/machinery/$id': typeof AuthenticatedMachineryIdRoute
+  '/_authenticated/machinery/': typeof AuthenticatedMachineryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/profile'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/list-machinery'
+    | '/profile'
+    | '/machinery/$id'
+    | '/machinery/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/profile'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/list-machinery'
+    | '/profile'
+    | '/machinery/$id'
+    | '/machinery'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/list-machinery'
     | '/_authenticated/profile'
+    | '/_authenticated/machinery/$id'
+    | '/_authenticated/machinery/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -110,6 +157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/list-machinery': {
+      id: '/_authenticated/list-machinery'
+      path: '/list-machinery'
+      fullPath: '/list-machinery'
+      preLoaderRoute: typeof AuthenticatedListMachineryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
@@ -117,17 +171,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/machinery/': {
+      id: '/_authenticated/machinery/'
+      path: '/machinery'
+      fullPath: '/machinery/'
+      preLoaderRoute: typeof AuthenticatedMachineryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/machinery/$id': {
+      id: '/_authenticated/machinery/$id'
+      path: '/machinery/$id'
+      fullPath: '/machinery/$id'
+      preLoaderRoute: typeof AuthenticatedMachineryIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedListMachineryRoute: typeof AuthenticatedListMachineryRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedMachineryIdRoute: typeof AuthenticatedMachineryIdRoute
+  AuthenticatedMachineryIndexRoute: typeof AuthenticatedMachineryIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedListMachineryRoute: AuthenticatedListMachineryRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedMachineryIdRoute: AuthenticatedMachineryIdRoute,
+  AuthenticatedMachineryIndexRoute: AuthenticatedMachineryIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
