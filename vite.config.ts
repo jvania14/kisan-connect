@@ -7,5 +7,8 @@ export default defineConfig({
 
   nitro: {
     preset: "vercel",
+    externals: {
+      inline: ["tslib"],
+    },
   },
 });
