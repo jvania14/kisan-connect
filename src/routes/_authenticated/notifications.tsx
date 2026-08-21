@@ -1,3 +1,4 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -63,11 +64,13 @@ function NotificationsPage() {
   }
 
   async function markAsRead(id: string) {
+    if (!user?.id) return;
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
       .eq("id", id)
-      .eq("user_id", user?.id);
+      .eq("user_id", user.id);
 
     if (error) {
       console.error(error);
@@ -106,11 +109,13 @@ function NotificationsPage() {
   }
 
   async function deleteNotification(id: string) {
+    if (!user?.id) return;
+
     const { error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", id)
-      .eq("user_id", user?.id);
+      .eq("user_id", user.id);
 
     if (error) {
       console.error(error);

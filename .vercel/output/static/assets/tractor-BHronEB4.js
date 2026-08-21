@@ -1,0 +1,1 @@
+var e=`/assets/tractor-BanLqRNy.jpg`;export{e as t};

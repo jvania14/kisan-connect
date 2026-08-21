@@ -1,14 +1,23 @@
+export type SearchIntent =
+  | "best"
+  | "cheapest"
+  | "highest_rated"
+  | "nearest";
+
 export type ParsedMachinerySearch = {
   originalQuery: string;
   category: string | null;
   durationDays: number | null;
   location: string | null;
+  intent: SearchIntent;
 };
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Tractor: [
     "tractor",
+    "tractors",
     "ट्रैक्टर",
+    "ٽرેક્ટર",
     "ਟਰੈਕਟਰ",
     "ট্রাক্টর",
     "ट्रॅक्टर",
@@ -21,11 +30,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   Harvester: [
     "harvester",
+    "harvestor",
     "हार्वेस्टर",
-    "हार्वेस्टर मशीन",
-    "ਹਾਰਵੈਸਟਰ",
     "হারভেস্টার",
-    "हार्वेस्टर",
+    "ਹਾਰਵੈਸਟਰ",
+    "ہارویسٹر",
     "હાર્વેસ્ટર",
     "ஹார்வெஸ்டர்",
     "హార్వెస్టర్",
@@ -35,6 +44,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   Rotavator: [
     "rotavator",
+    "rotavator machine",
     "रोटावेटर",
     "ਰੋਟਾਵੇਟਰ",
     "রোটাভেটর",
@@ -48,10 +58,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   "Seed Drill": [
     "seed drill",
+    "seeddrill",
     "सीड ड्रिल",
+    "बीज ड्रिल",
     "ਬੀਜ ਡਰਿੱਲ",
     "বীজ ড্রিল",
-    "सीड ड्रिल",
     "સીડ ડ્રિલ",
     "சீட் டிரில்",
     "సీడ్ డ్రిల్",
@@ -61,10 +72,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   Cultivator: [
     "cultivator",
+    "cultivation machine",
     "कल्टीवेटर",
+    "कल्टीवेटर मशीन",
     "ਕਲਟੀਵੇਟਰ",
     "কাল্টিভেটর",
-    "कल्टीवेटर",
     "કલ્ટિવેટર",
     "கல்டிவேட்டர்",
     "కల్టివేటర్",
@@ -74,10 +86,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   Thresher: [
     "thresher",
+    "threshing machine",
     "थ्रेशर",
+    "थ्रेसर",
     "ਥ੍ਰੈਸ਼ਰ",
     "থ্রেশার",
-    "थ्रेशर",
     "થ્રેશર",
     "த்ரெஷர்",
     "త్రెషర్",
@@ -87,11 +100,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
   Sprayer: [
     "sprayer",
+    "spray machine",
     "स्प्रेयर",
     "स्प्रे मशीन",
     "ਸਪਰੇਅਰ",
     "স্প্রেয়ার",
-    "स्प्रेयर",
     "સ્પ્રેયર",
     "ஸ்ப்ரேயர்",
     "స్ప్రేయర్",
@@ -124,16 +137,106 @@ const NUMBER_WORDS: Record<string, number> = {
   आठ: 8,
   नौ: 9,
   दस: 10,
+
+  एकदा: 1,
+  दोन: 2,
+ 
+  नऊ: 9,
+  दहा: 10,
+
+  ਇੱਕ: 1,
+  ਦੋ: 2,
+  ਤਿੰਨ: 3,
+  ਚਾਰ: 4,
+  ਪੰਜ: 5,
+  ਛੇ: 6,
+  ਸੱਤ: 7,
+  ਅੱਠ: 8,
+  ਨੌਂ: 9,
+  ਦਸ: 10,
+
+  দুই: 2,
+  তিন: 3,
+  চার: 4,
+  পাঁচ: 5,
+  ছয়: 6,
+  সাত: 7,
+  আট: 8,
+  নয়: 9,
+  দশ: 10,
+
+  એક: 1,
+  બે: 2,
+  ત્રણ: 3,
+  ચાર: 4,
+  પાંચ: 5,
+  છ: 6,
+  સાત: 7,
+  આઠ: 8,
+  નવ: 9,
+  દસ: 10,
+
+  ஒன்று: 1,
+  இரண்டு: 2,
+  மூன்று: 3,
+  நான்கு: 4,
+  ஐந்து: 5,
+  ஆறு: 6,
+  ஏழு: 7,
+  எட்டு: 8,
+  ஒன்பது: 9,
+  பத்து: 10,
+
+  ఒకటి: 1,
+  రెండు: 2,
+  మూడు: 3,
+  నాలుగు: 4,
+  ఐదు: 5,
+  ఆరు: 6,
+  ఏడు: 7,
+  ఎనిమిది: 8,
+  తొమ్మిది: 9,
+  పది: 10,
+
+  ಒಂದು: 1,
+  ಎರಡು: 2,
+  ಮೂರು: 3,
+  ನಾಲ್ಕು: 4,
+  ಐದು: 5,
+  ಆರು: 6,
+  ಏಳು: 7,
+  ಎಂಟು: 8,
+  ಒಂಬತ್ತು: 9,
+  ಹತ್ತು: 10,
+
+  ഒന്ന്: 1,
+  രണ്ട്: 2,
+  മൂന്ന്: 3,
+  നാല്: 4,
+  അഞ്ച്: 5,
+  ആറ്: 6,
+  ഏഴ്: 7,
+  എട്ട്: 8,
+  ഒമ്പത്: 9,
+  പത്ത്: 10,
 };
 
+export function normalizeSearchText(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 function findCategory(text: string): string | null {
-  const lower = text.toLowerCase();
+  const normalized = normalizeSearchText(text);
 
   for (const [category, keywords] of Object.entries(
     CATEGORY_KEYWORDS,
   )) {
     for (const keyword of keywords) {
-      if (lower.includes(keyword.toLowerCase())) {
+      if (normalized.includes(normalizeSearchText(keyword))) {
         return category;
       }
     }
@@ -143,31 +246,17 @@ function findCategory(text: string): string | null {
 }
 
 function findDuration(text: string): number | null {
-  const normalized = text
-    .toLowerCase()
-    .replace(/,/g, " ");
+  const normalized = normalizeSearchText(text);
 
-  /*
-   * Numeric forms:
-   *
-   * 2 days
-   * 2 day
-   * 2 दिन
-   * 2 दिनों
-   * 2 દિવસ
-   * 2 நாட்கள்
-   * etc.
-   */
-
+  // Numeric durations
   const numericPatterns = [
-    /(\d+)\s*(?:days?|day)/i,
-    /(\d+)\s*(?:दिन|दिनों)/,
+    /(\d+)\s*(?:days?|day)\b/i,
+    /(\d+)\s*(?:दिन|दिनों|दिवस)/,
     /(\d+)\s*(?:ਦਿਨ|ਦਿਨਾਂ)/,
     /(\d+)\s*(?:দিন|দিনের)/,
-    /(\d+)\s*(?:दिवस)/,
     /(\d+)\s*(?:દિવસ|દિવસો)/,
-    /(\d+)\s*(?:நாட்கள்|நாள்)/,
-    /(\d+)\s*(?:రోజులు|రోజు)/,
+    /(\d+)\s*(?:நாள்|நாட்கள்)/,
+    /(\d+)\s*(?:రోజు|రోజులు)/,
     /(\d+)\s*(?:ದಿನ|ದಿನಗಳ)/,
     /(\d+)\s*(?:ദിവസം|ദിവസങ്ങൾക്ക്)/,
   ];
@@ -180,31 +269,23 @@ function findDuration(text: string): number | null {
     }
   }
 
-  /*
-   * English number words
-   */
-
+  // Number words
   for (const [word, number] of Object.entries(NUMBER_WORDS)) {
-    if (
-      new RegExp(
-        `\\b${word}\\s*(?:days?|day)`,
-        "i",
-      ).test(normalized)
-    ) {
-      return number;
-    }
-  }
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  /*
-   * Hindi number words
-   */
+    const patterns = [
+      new RegExp(`\\b${escaped}\\s*(?:days?|day)\\b`, "i"),
+      new RegExp(`${escaped}\\s*(?:दिन|दिनों|दिवस)`, "i"),
+      new RegExp(`${escaped}\\s*(?:ਦਿਨ|ਦਿਨਾਂ)`, "i"),
+      new RegExp(`${escaped}\\s*(?:দিন|দিনের)`, "i"),
+      new RegExp(`${escaped}\\s*(?:દિવસ|દિવસો)`, "i"),
+      new RegExp(`${escaped}\\s*(?:நாள்|நாட்கள்)`, "i"),
+      new RegExp(`${escaped}\\s*(?:రోజు|రోజులు)`, "i"),
+      new RegExp(`${escaped}\\s*(?:ದಿನ|ದಿನಗಳ)`, "i"),
+      new RegExp(`${escaped}\\s*(?:ദിവസം|ദിവസങ്ങൾക്ക്)`, "i"),
+    ];
 
-  for (const [word, number] of Object.entries(NUMBER_WORDS)) {
-    if (
-      normalized.includes(`${word} दिन`) ||
-      normalized.includes(`${word} दिनों`) ||
-      normalized.includes(`${word} दिवस`)
-    ) {
+    if (patterns.some((pattern) => pattern.test(normalized))) {
       return number;
     }
   }
@@ -213,27 +294,158 @@ function findDuration(text: string): number | null {
 }
 
 function findLocation(text: string): string | null {
-  /*
-   * Keep this conservative.
-   *
-   * We don't want words like "tractor" or "days"
-   * accidentally becoming a location.
-   */
+  const normalized = normalizeSearchText(text);
 
   const patterns = [
-    /(?:near|in|at)\s+([a-zA-Z][a-zA-Z\s]{2,30})/i,
-    /(?:पास|में|पर)\s+([ऀ-ॿa-zA-Z][ऀ-ॿa-zA-Z\s]{2,30})/,
+    // English
+    /(?:near|nearby|around|in|at|from)\s+([a-zA-Z][a-zA-Z\s-]{1,35}?)(?=\s+(?:for|for\s+\d|one|two|three|four|five|days?|day)\b|[,.!?]|$)/i,
+
+    // Hindi
+    /(?:के पास|पास|पास में|नजदीक|नज़दीक|में|से)\s+([\u0900-\u097F][\u0900-\u097F\s-]{1,35}?)(?=\s+(?:के लिए|दिन|दिनों|दिवस)|[,.!?]|$)/,
+
+    // Punjabi
+    /(?:ਨੇੜੇ|ਵਿੱਚ|ਤੋਂ|ਕੋਲ)\s+([\u0A00-\u0A7F][\u0A00-\u0A7F\s-]{1,35}?)(?=\s+(?:ਲਈ|ਦਿਨ|ਦਿਨਾਂ)|[,.!?]|$)/,
+
+    // Bengali
+    /(?:কাছে|মধ্যে|থেকে)\s+([\u0980-\u09FF][\u0980-\u09FF\s-]{1,35}?)(?=\s+(?:জন্য|দিন)|[,.!?]|$)/,
+
+    // Gujarati
+    /(?:પાસે|માં|થી|નજીક)\s+([\u0A80-\u0AFF][\u0A80-\u0AFF\s-]{1,35}?)(?=\s+(?:માટે|દિવસ)|[,.!?]|$)/,
+
+    // Tamil
+    /(?:அருகில்|இல்|இருந்து)\s+([\u0B80-\u0BFF][\u0B80-\u0BFF\s-]{1,35}?)(?=\s+(?:க்கு|நாள்|நாட்கள்)|[,.!?]|$)/,
+
+    // Telugu
+    /(?:దగ్గర|లో|నుండి)\s+([\u0C00-\u0C7F][\u0C00-\u0C7F\s-]{1,35}?)(?=\s+(?:కోసం|రోజు|రోజులు)|[,.!?]|$)/,
+
+    // Kannada
+    /(?:ಹತ್ತಿರ|ನಲ್ಲಿ|ನಿಂದ)\s+([\u0C80-\u0CFF][\u0C80-\u0CFF\s-]{1,35}?)(?=\s+(?:ಗಾಗಿ|ದಿನ|ದಿನಗಳ)|[,.!?]|$)/,
+
+    // Malayalam
+    /(?:അടുത്ത്|ൽ|നിന്ന്)\s+([\u0D00-\u0D7F][\u0D00-\u0D7F\s-]{1,35}?)(?=\s+(?:വേണ്ടി|ദിവസം)|[,.!?]|$)/,
   ];
 
   for (const pattern of patterns) {
-    const match = text.match(pattern);
+    const match = normalized.match(pattern);
 
     if (match?.[1]) {
-      return match[1].trim();
+      const location = match[1]
+        .trim()
+        .replace(/\s+/g, " ");
+
+      if (location.length >= 2) {
+        return location;
+      }
     }
   }
 
   return null;
+}
+
+function findIntent(text: string): SearchIntent {
+  const normalized = normalizeSearchText(text);
+
+  const cheapestKeywords = [
+    "cheapest",
+    "cheap",
+    "lowest price",
+    "low price",
+    "budget",
+    "सस्ता",
+    "सबसे सस्ता",
+    "कम कीमत",
+    "कम दाम",
+    "ਸਸਤਾ",
+    "ਘੱਟ ਕੀਮਤ",
+    "সস্তা",
+    "কম দাম",
+    "સસ્તું",
+    "ઓછી કિંમત",
+    "மலிவான",
+    "குறைந்த விலை",
+    "చౌక",
+    "తక్కువ ధర",
+    "ಅಗ್ಗ",
+    "ಕಡಿಮೆ ಬೆಲೆ",
+    "വിലകുറഞ്ഞ",
+    "കുറഞ്ഞ വില",
+  ];
+
+  const ratingKeywords = [
+    "best rated",
+    "highest rated",
+    "top rated",
+    "best rating",
+    "highest rating",
+    "सबसे अच्छी रेटिंग",
+    "अच्छी रेटिंग",
+    "सबसे बढ़िया",
+    "ਵਧੀਆ ਰੇਟਿੰਗ",
+    "ਸਭ ਤੋਂ ਵਧੀਆ",
+    "সেরা রেটিং",
+    "ভালো রেটিং",
+    "શ્રેષ્ઠ રેટિંગ",
+    "சிறந்த மதிப்பீடு",
+    "சிறந்த ரேட்டிங்",
+    "ఉత్తమ రేటింగ్",
+    "ಅತ್ಯುತ್ತಮ ರೇಟಿಂಗ್",
+    "മികച്ച റേറ്റിംഗ്",
+  ];
+
+  const nearestKeywords = [
+    "nearest",
+    "near me",
+    "closest",
+    "nearby",
+    "मेरे पास",
+    "मेरे नजदीक",
+    "मेरे नज़दीक",
+    "नजदीक",
+    "नज़दीक",
+    "पास में",
+    "सबसे पास",
+    "ਮੇਰੇ ਨੇੜੇ",
+    "ਨੇੜੇ",
+    "ਕੋਲ",
+    "কাছাকাছি",
+    "আমার কাছে",
+    "નજીક",
+    "મારી નજીક",
+    "அருகில்",
+    "என் அருகில்",
+    "దగ్గరలో",
+    "నా దగ్గర",
+    "ಹತ್ತಿರ",
+    "ನನ್ನ ಹತ್ತಿರ",
+    "അടുത്ത്",
+    "എന്റെ അടുത്ത്",
+  ];
+
+  if (
+    cheapestKeywords.some((keyword) =>
+      normalized.includes(normalizeSearchText(keyword)),
+    )
+  ) {
+    return "cheapest";
+  }
+
+  if (
+    ratingKeywords.some((keyword) =>
+      normalized.includes(normalizeSearchText(keyword)),
+    )
+  ) {
+    return "highest_rated";
+  }
+
+  if (
+    nearestKeywords.some((keyword) =>
+      normalized.includes(normalizeSearchText(keyword)),
+    )
+  ) {
+    return "nearest";
+  }
+
+  return "best";
 }
 
 export function parseMachinerySearch(
@@ -246,16 +458,8 @@ export function parseMachinerySearch(
     category: findCategory(cleanQuery),
     durationDays: findDuration(cleanQuery),
     location: findLocation(cleanQuery),
+    intent: findIntent(cleanQuery),
   };
-}
-
-export function normalizeSearchText(
-  value: unknown,
-): string {
-  return String(value ?? "")
-    .toLowerCase()
-    .normalize("NFKC")
-    .trim();
 }
 
 export function machineryMatchesQuery(
@@ -271,51 +475,48 @@ export function machineryMatchesQuery(
   },
   parsed: ParsedMachinerySearch,
 ): boolean {
-  /*
-   * If a category was detected, category is the strongest
-   * requirement.
-   */
+  const category = normalizeSearchText(machinery.category);
+  const name = normalizeSearchText(machinery.name);
+  const brand = normalizeSearchText(machinery.brand);
+  const model = normalizeSearchText(machinery.model);
+  const description = normalizeSearchText(machinery.description);
 
+  // Category
   if (parsed.category) {
-    const category = normalizeSearchText(
-      machinery.category,
-    );
+    const wanted = normalizeSearchText(parsed.category);
 
-    const name = normalizeSearchText(machinery.name);
+    const categoryMatches =
+      category.includes(wanted) ||
+      name.includes(wanted) ||
+      brand.includes(wanted) ||
+      model.includes(wanted) ||
+      description.includes(wanted);
 
-    const wanted = normalizeSearchText(
-      parsed.category,
-    );
-
-    if (
-      !category.includes(wanted) &&
-      !name.includes(wanted)
-    ) {
+    if (!categoryMatches) {
       return false;
     }
   }
 
-  /*
-   * If a location was detected, use it as a soft filter.
-   *
-   * For the prototype we only reject it when we have
-   * an obvious location mismatch.
-   */
-
+  // Location
   if (parsed.location) {
+    const location = normalizeSearchText(parsed.location);
+
     const locationText = [
       machinery.state,
       machinery.district,
       machinery.village,
     ]
       .map(normalizeSearchText)
+      .filter(Boolean)
       .join(" ");
 
+    /*
+     * Only reject when location data exists and clearly
+     * doesn't match.
+     */
     if (
       locationText &&
-      !locationText.includes(
-        normalizeSearchText(parsed.location),
-      )
+      !locationText.includes(location)
     ) {
       return false;
     }
@@ -330,68 +531,64 @@ export function calculateMatchScore(
     name?: string | null;
     price_per_day?: number | null;
     rating?: number | null;
+    state?: string | null;
+    district?: string | null;
+    village?: string | null;
   },
   parsed: ParsedMachinerySearch,
 ): number {
   let score = 0;
 
-  const category = normalizeSearchText(
-    machinery.category,
-  );
-
+  const category = normalizeSearchText(machinery.category);
   const name = normalizeSearchText(machinery.name);
 
-  /*
-   * Resource type = 30%
-   */
+  // Category: 40
   if (parsed.category) {
-    const wanted = normalizeSearchText(
-      parsed.category,
-    );
+    const wanted = normalizeSearchText(parsed.category);
 
-    if (
-      category === wanted ||
-      name.includes(wanted)
-    ) {
+    if (category === wanted) {
+      score += 40;
+    } else if (category.includes(wanted)) {
+      score += 35;
+    } else if (name.includes(wanted)) {
       score += 30;
+    }
+  } else {
+    score += 20;
+  }
+
+  // Location: 25
+  if (parsed.location) {
+    const wantedLocation = normalizeSearchText(parsed.location);
+
+    const locationText = [
+      machinery.state,
+      machinery.district,
+      machinery.village,
+    ]
+      .map(normalizeSearchText)
+      .filter(Boolean)
+      .join(" ");
+
+    if (locationText.includes(wantedLocation)) {
+      score += 25;
     }
   } else {
     score += 15;
   }
 
-  /*
-   * Availability = 25%
-   *
-   * The actual date overlap is handled by the
-   * marketplace/booking flow.
-   *
-   * For a voice request without dates we give a
-   * neutral availability score.
-   */
-  score += 25;
-
-  /*
-   * Location = 20%
-   *
-   * Without GPS/location data in the request,
-   * use a neutral value.
-   */
-  score += 10;
-
-  /*
-   * Price = 15%
-   *
-   * Neutral score for now.
-   */
-  score += 7;
-
-  /*
-   * Rating = 10%
-   */
+  // Rating: 15
   const rating = Number(machinery.rating ?? 0);
 
   if (rating > 0) {
-    score += Math.min(10, (rating / 5) * 10);
+    score += Math.min(15, (rating / 5) * 15);
+  }
+
+  // Price exists: 5
+  const price = Number(machinery.price_per_day ?? 0);
+
+  if (price > 0) {
+    score += 5;
   }
 
   return Math.min(100, Math.round(score));

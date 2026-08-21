@@ -50,10 +50,18 @@ function ListMachinery() {
     e.preventDefault();
     if (!user) return;
     const price = Number(form.price_per_day);
-    if (form.name.trim().length < 3) return toast.error("Enter the machinery name.");
-    if (!Number.isFinite(price) || price <= 0) return toast.error("Enter a valid price per day.");
-    if (form.available_until && form.available_until < form.available_from)
-      return toast.error("Available-until must be after available-from.");
+    if (form.name.trim().length < 3) {
+      toast.error("Enter the machinery name.");
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error("Enter a valid price per day.");
+      return;
+    }
+    if (form.available_until && form.available_until < form.available_from) {
+      toast.error("Available-until must be after available-from.");
+      return;
+    }
 
     setBusy(true);
     const { data, error } = await supabase

@@ -1,6 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Languages, Mic, MicOff, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  Languages,
+  Mic,
+  MicOff,
+  Search,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/voice")({
   component: VoiceSearch,
@@ -18,9 +24,11 @@ interface SpeechRecognitionInstance {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+
   start(): void;
   stop(): void;
   abort(): void;
+
   onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
@@ -40,16 +48,16 @@ declare global {
 
 const LANGUAGES = [
   {
-    code: "hi-IN",
-    label: "हिन्दी",
-    name: "Hindi",
-    example: "मुझे दो दिन के लिए ट्रैक्टर चाहिए",
-  },
-  {
     code: "en-IN",
     label: "English",
     name: "English",
     example: "I need a tractor for two days",
+  },
+  {
+    code: "hi-IN",
+    label: "हिन्दी",
+    name: "Hindi",
+    example: "मुझे दो दिन के लिए ट्रैक्टर चाहिए",
   },
   {
     code: "pa-IN",
@@ -104,7 +112,7 @@ const LANGUAGES = [
 function VoiceSearch() {
   const navigate = useNavigate();
 
-  const [language, setLanguage] = useState("hi-IN");
+  const [language, setLanguage] = useState("en-IN");
   const [speech, setSpeech] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState("");
@@ -115,8 +123,12 @@ function VoiceSearch() {
 
   const selectedLanguage =
     LANGUAGES.find((item) => item.code === language) ??
-    LANGUAGES[0];
+    LANGUAGES[0]!;
 
+  /*
+   * Create speech recognition whenever the selected
+   * language changes.
+   */
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition ||
@@ -124,8 +136,11 @@ function VoiceSearch() {
 
     if (!SpeechRecognition) {
       setSupported(false);
+      recognitionRef.current = null;
       return;
     }
+
+    setSupported(true);
 
     const recognition = new SpeechRecognition();
 
@@ -141,14 +156,28 @@ function VoiceSearch() {
     recognition.onresult = (
       event: SpeechRecognitionResultEvent,
     ) => {
-      let text = "";
+      let finalText = "";
+      let interimText = "";
 
       for (let i = 0; i < event.results.length; i++) {
-        text += event.results[i][0]?.transcript ?? "";
+        const result = event.results[i];
+
+        const transcript =
+          result?.[0]?.transcript ?? "";
+
+        if (result?.isFinal) {
+          finalText += transcript;
+        } else {
+          interimText += transcript;
+        }
       }
 
-      if (text.trim()) {
-        setSpeech(text.trim());
+      const text = (
+        finalText || interimText
+      ).trim();
+
+      if (text) {
+        setSpeech(text);
       }
     };
 
@@ -159,8 +188,9 @@ function VoiceSearch() {
 
       switch (event.error) {
         case "not-allowed":
+        case "service-not-allowed":
           setError(
-            "Microphone permission was denied. Please allow microphone access.",
+            "Microphone permission was denied. Please allow microphone access in Chrome.",
           );
           break;
 
@@ -170,15 +200,24 @@ function VoiceSearch() {
           );
           break;
 
+        case "audio-capture":
+          setError(
+            "No microphone was found. Please check your microphone.",
+          );
+          break;
+
         case "network":
           setError(
             "Speech recognition needs an internet connection.",
           );
           break;
 
+        case "aborted":
+          break;
+
         default:
           setError(
-            "Could not understand your voice. Please try again.",
+            `Could not understand the voice input. Please try again.`,
           );
       }
     };
@@ -190,10 +229,34 @@ function VoiceSearch() {
     recognitionRef.current = recognition;
 
     return () => {
-      recognition.abort();
-      recognitionRef.current = null;
+      try {
+        recognition.abort();
+      } catch {
+        // Ignore cleanup errors.
+      }
+
+      if (recognitionRef.current === recognition) {
+        recognitionRef.current = null;
+      }
     };
   }, [language]);
+
+  const stopListening = () => {
+    const recognition = recognitionRef.current;
+
+    if (!recognition) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      recognition.stop();
+    } catch {
+      // Recognition may already be stopped.
+    }
+
+    setIsListening(false);
+  };
 
   const startListening = () => {
     if (!supported) {
@@ -203,28 +266,31 @@ function VoiceSearch() {
       return;
     }
 
-    if (!recognitionRef.current) {
-      setError("Voice recognition is unavailable.");
+    const recognition = recognitionRef.current;
+
+    if (!recognition) {
+      setError(
+        "Voice recognition is unavailable. Please refresh the page.",
+      );
       return;
     }
 
     setSpeech("");
     setError("");
 
-    recognitionRef.current.lang = language;
+    recognition.lang = language;
 
     try {
-      recognitionRef.current.start();
+      recognition.start();
     } catch {
+      /*
+       * Browser throws InvalidStateError if start()
+       * is called while already running.
+       */
       setError(
-        "Microphone is already active. Please wait and try again.",
+        "Microphone is already active. Please wait a moment and try again.",
       );
     }
-  };
-
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
   };
 
   const handleMicrophone = () => {
@@ -236,30 +302,32 @@ function VoiceSearch() {
   };
 
   const searchMachinery = () => {
-    if (!speech.trim()) {
+    const query = speech.trim();
+
+    if (!query) {
       setError("Please speak something first.");
       return;
     }
 
     /*
-     * IMPORTANT:
-     * We pass the COMPLETE natural-language request.
+     * Navigate directly using the URL.
      *
-     * The machinery page will extract:
-     *
-     * "मुझे दो दिन के लिए ट्रैक्टर चाहिए"
-     *
-     * →
-     * category = Tractor
-     * duration = 2 days
+     * This avoids the TanStack Router search-type issue
+     * and ensures the complete natural-language query
+     * reaches the machinery page. Uses "q" to match the
+     * param name the /machinery route actually reads.
      */
+    const url =
+      `/machinery?q=${encodeURIComponent(query)}`;
 
-    navigate({
-      to: "/machinery",
-      search: {
-        search: speech.trim(),
-      } as never,
-    });
+    window.location.assign(url);
+  };
+
+  const chooseLanguage = (code: string) => {
+    stopListening();
+    setSpeech("");
+    setError("");
+    setLanguage(code);
   };
 
   return (
@@ -278,6 +346,7 @@ function VoiceSearch() {
         </button>
 
         <div className="overflow-hidden rounded-3xl border border-[#e5e2d5] bg-white shadow-sm">
+          {/* Header */}
           <div className="px-6 pb-5 pt-8 text-center">
             <div className="mb-4 flex items-center justify-center gap-3">
               <Languages className="h-7 w-7 text-green-700" />
@@ -292,6 +361,7 @@ function VoiceSearch() {
             </p>
           </div>
 
+          {/* Language selector */}
           <div className="mx-6 rounded-2xl bg-[#f6f5e9] p-5">
             <label
               htmlFor="language"
@@ -303,16 +373,16 @@ function VoiceSearch() {
             <select
               id="language"
               value={language}
-              onChange={(e) => {
-                stopListening();
-                setSpeech("");
-                setError("");
-                setLanguage(e.target.value);
-              }}
+              onChange={(event) =>
+                chooseLanguage(event.target.value)
+              }
               className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-lg outline-none focus:border-green-700"
             >
               {LANGUAGES.map((item) => (
-                <option key={item.code} value={item.code}>
+                <option
+                  key={item.code}
+                  value={item.code}
+                >
                   {item.label} — {item.name}
                 </option>
               ))}
@@ -323,14 +393,24 @@ function VoiceSearch() {
             </p>
           </div>
 
+          {/* Microphone */}
           <div className="px-6 py-10 text-center">
             <button
               onClick={handleMicrophone}
               disabled={!supported}
+              aria-label={
+                isListening
+                  ? "Stop listening"
+                  : "Start voice search"
+              }
               className={`mx-auto flex h-36 w-36 items-center justify-center rounded-full shadow-lg transition ${
                 isListening
                   ? "scale-110 bg-red-600"
                   : "bg-green-700 hover:scale-105 hover:bg-green-800"
+              } ${
+                !supported
+                  ? "cursor-not-allowed opacity-50"
+                  : ""
               }`}
             >
               {isListening ? (
@@ -348,11 +428,12 @@ function VoiceSearch() {
 
             <p className="mt-3 text-lg text-gray-500">
               {isListening
-                ? "Speak clearly..."
+                ? `Speak in ${selectedLanguage.name}...`
                 : selectedLanguage.example}
             </p>
           </div>
 
+          {/* Speech */}
           <div className="mx-6 mb-6 rounded-2xl bg-[#f6f5e9] p-6">
             <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Your Speech
@@ -367,12 +448,14 @@ function VoiceSearch() {
             </div>
           </div>
 
+          {/* Error */}
           {error && (
             <div className="mx-6 mb-6 rounded-2xl bg-red-50 px-6 py-4 text-center text-red-600">
               {error}
             </div>
           )}
 
+          {/* Search */}
           <div className="px-6 pb-8">
             <button
               onClick={searchMachinery}
@@ -388,6 +471,7 @@ function VoiceSearch() {
             </button>
           </div>
 
+          {/* Language buttons */}
           <div className="border-t border-[#e5e2d5] bg-[#faf9f0] px-6 py-5">
             <p className="text-center text-sm text-gray-600">
               Supported languages
@@ -397,16 +481,13 @@ function VoiceSearch() {
               {LANGUAGES.map((item) => (
                 <button
                   key={item.code}
-                  onClick={() => {
-                    stopListening();
-                    setLanguage(item.code);
-                    setSpeech("");
-                    setError("");
-                  }}
+                  onClick={() =>
+                    chooseLanguage(item.code)
+                  }
                   className={`rounded-full px-4 py-2 text-sm font-medium ${
                     language === item.code
                       ? "bg-green-700 text-white"
-                      : "bg-white text-gray-700"
+                      : "bg-white text-gray-700 hover:bg-green-50"
                   }`}
                 >
                   {item.label}
@@ -418,10 +499,18 @@ function VoiceSearch() {
 
         {!supported && (
           <div className="mt-5 rounded-2xl bg-yellow-50 p-5 text-center text-yellow-800">
-            Voice recognition is not supported in this browser.
-            Please use Google Chrome.
+            Voice recognition is not supported in this
+            browser. Please use Google Chrome.
           </div>
         )}
+
+        <div className="mt-5 rounded-2xl border border-green-100 bg-green-50 p-5 text-center text-sm text-green-800">
+          <strong>Tip:</strong> Say the machine, location,
+          and number of days together.
+          <br />
+          Example: "I need a tractor near Ajmer for two
+          days."
+        </div>
       </div>
     </div>
   );

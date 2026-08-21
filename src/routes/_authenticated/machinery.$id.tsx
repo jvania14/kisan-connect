@@ -212,7 +212,7 @@ function MachineryDetail() {
     return (
       <div className="card-surface p-10 text-center">
         <p className="font-medium">This machinery listing no longer exists.</p>
-        <Link to="/machinery" search={{}} className="mt-4 inline-block">
+        <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }} className="mt-4 inline-block">
           <Button>Back to marketplace</Button>
         </Link>
       </div>
@@ -240,7 +240,7 @@ function MachineryDetail() {
             <Link to="/bookings">
               <Button className="h-12 px-6">Go to My Bookings</Button>
             </Link>
-            <Link to="/machinery" search={{}}>
+            <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }}>
               <Button variant="outline" className="h-12 px-6">
                 Keep browsing
               </Button>
@@ -255,7 +255,7 @@ function MachineryDetail() {
 
   return (
     <div className="space-y-5">
-      <Link to="/machinery" search={{}} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Back to marketplace
       </Link>
 

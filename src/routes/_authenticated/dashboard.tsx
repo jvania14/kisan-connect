@@ -79,7 +79,7 @@ function Dashboard() {
 
   const search = (e: React.FormEvent) => {
     e.preventDefault();
-    void navigate({ to: "/machinery", search: { q: q.trim() || undefined } });
+   void navigate({ to: "/machinery", search: { q: q.trim(), category: "", start: "", end: "" } });
   };
 
   return (
