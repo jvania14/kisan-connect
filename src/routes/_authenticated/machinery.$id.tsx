@@ -1,460 +1,661 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
-  CheckCircle2,
-  Loader2,
+  Check,
+  Clock3,
+  IndianRupee,
   MapPin,
-  Star,
-  XCircle,
+  ShieldCheck,
+  Tractor,
+  Users,
 } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { createNotification } from "@/lib/notify";
-import {
-  categoryImage,
-  daysBetween,
-  distanceKm,
-  formatINR,
-  overlaps,
-  toISODate,
-  type Machinery,
-} from "@/lib/kisan";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/machinery/$id")({
-  component: MachineryDetail,
+  component: MachineryDetails,
 });
 
-interface BookedRange {
+type Machinery = {
   id: string;
-  start_date: string;
-  end_date: string;
-  status: string;
-}
-
-interface Review {
-  id: string;
+  name: string;
+  category: string;
+  owner: string;
+  location: string;
+  distance: number;
+  pricePerHour: number;
+  pricePerDay: number;
+  acresPerHour: number;
   rating: number;
-  comment: string | null;
-  created_at: string;
-  reviewer: { name: string } | null;
-}
+  reviews: number;
+  available: boolean;
+  image: string;
+};
 
-function MachineryDetail() {
-  const { id } = Route.useParams();
-  const { profile, user } = useAuth();
+const MACHINERY: Machinery = {
+  id: "tractor-001",
+  name: "Mahindra 575 DI Tractor",
+  category: "Tractor",
+  owner: "Ramesh Patil",
+  location: "Nashik",
+  distance: 12,
+  pricePerHour: 700,
+  pricePerDay: 4500,
+  acresPerHour: 1.2,
+  rating: 4.8,
+  reviews: 27,
+  available: true,
+  image: "/src/assets/tractor.jpg",
+};
+
+function MachineryDetails() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [booking, setBooking] = useState(false);
-  const [confirmed, setConfirmed] = useState<{ id: string; total: number } | null>(null);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["machinery", id],
-    queryFn: async () => {
-      const [m, b, r] = await Promise.all([
-        supabase
-          .from("machinery")
-          .select("*, profiles:owner_id(id, name, is_verified, rating, phone)")
-          .eq("id", id)
-          .maybeSingle(),
-        supabase
-          .from("bookings")
-          .select("id, start_date, end_date, status")
-          .eq("machinery_id", id)
-          .in("status", ["pending", "confirmed"]),
-        supabase
-          .from("reviews")
-          .select("id, rating, comment, created_at, reviewer:reviewer_id(name)")
-          .eq("machinery_id", id)
-          .order("created_at", { ascending: false }),
-      ]);
-      if (m.error) throw m.error;
-      if (b.error) throw b.error;
-      if (r.error) throw r.error;
-      return {
-        machinery: (m.data ?? null) as unknown as Machinery | null,
-        booked: (b.data ?? []) as BookedRange[],
-        reviews: (r.data ?? []) as unknown as Review[],
-      };
-    },
-  });
-
-  const machinery = data?.machinery ?? null;
-  const booked = useMemo(() => data?.booked ?? [], [data]);
-
-  const distance = distanceKm(
-    profile?.latitude,
-    profile?.longitude,
-    machinery?.latitude,
-    machinery?.longitude,
+  const [acres, setAcres] = useState("5");
+  const [days, setDays] = useState("1");
+  const [bookingSent, setBookingSent] = useState(false);
+  const [pricingMode, setPricingMode] = useState<"hour" | "day">(
+    "day",
   );
 
-  const days = start && end && end >= start ? daysBetween(start, end) : 0;
-  const total = machinery ? days * Number(machinery.price_per_day) : 0;
+  const machinery = MACHINERY;
 
-  const conflict = useMemo(() => {
-    if (!start || !end || end < start) return null;
-    const clash = booked.find((b) => overlaps(start, end, b.start_date, b.end_date));
-    if (clash) return "booked" as const;
-    if (machinery?.available_from && machinery.available_from > start) return "window" as const;
-    if (machinery?.available_until && machinery.available_until < end) return "window" as const;
-    return null;
-  }, [start, end, booked, machinery]);
+  const calculation = useMemo(() => {
+    const area = Math.max(Number(acres) || 0, 0);
+    const numberOfDays = Math.max(Number(days) || 1, 1);
 
-  const confirmBooking = async () => {
-    if (!machinery || !user) return;
-    if (!start || !end) {
-      toast.error("Please select start and end dates.");
-      return;
-    }
-    if (end < start) {
-      toast.error("End date must be on or after the start date.");
-      return;
-    }
-    if (machinery.owner_id === user.id) {
-      toast.error("You cannot book your own machinery.");
-      return;
-    }
-    if (conflict) {
-      toast.error("These dates are not available.");
-      return;
-    }
-    setBooking(true);
-    // Re-check availability against the database right before inserting.
-    const { data: fresh, error: freshErr } = await supabase
-      .from("bookings")
-      .select("id, start_date, end_date")
-      .eq("machinery_id", machinery.id)
-      .in("status", ["pending", "confirmed"]);
-    if (freshErr) {
-      setBooking(false);
-      toast.error(`Availability check failed: ${freshErr.message}`);
-      return;
-    }
-    if ((fresh ?? []).some((b) => overlaps(start, end, b.start_date, b.end_date))) {
-      setBooking(false);
-      await refetch();
-      toast.error("Someone just booked these dates. Please pick different dates.");
-      return;
-    }
+    const hoursNeeded =
+      machinery.acresPerHour > 0
+        ? area / machinery.acresPerHour
+        : 0;
 
-    const { data: inserted, error: insertErr } = await supabase
-      .from("bookings")
-      .insert({
-        machinery_id: machinery.id,
-        renter_id: user.id,
-        owner_id: machinery.owner_id,
-        start_date: start,
-        end_date: end,
-        total_price: total,
-        status: "pending",
-      })
-      .select("id")
-      .single();
+    const rentalCost =
+      pricingMode === "day"
+        ? numberOfDays * machinery.pricePerDay
+        : Math.ceil(hoursNeeded) * machinery.pricePerHour;
 
-    if (insertErr || !inserted) {
-      setBooking(false);
-      toast.error(`Booking failed: ${insertErr?.message ?? "unknown error"}`);
-      return;
-    }
+    const estimatedMarketAlternative = area * 1500;
 
-    await createNotification({
-      userId: machinery.owner_id,
-      type: "booking_request",
-      title: "New booking request",
-      message: `${profile?.name ?? "A farmer"} requested ${machinery.name} from ${start} to ${end}.`,
-    });
-    await createNotification({
-      userId: user.id,
-      type: "booking_created",
-      title: "Booking request sent",
-      message: `Your request for ${machinery.name} (${start} → ${end}) is pending owner confirmation.`,
-    });
+    const savings = Math.max(
+      estimatedMarketAlternative - rentalCost,
+      0,
+    );
 
-    setBooking(false);
-    setConfirmed({ id: inserted.id, total });
-    await queryClient.invalidateQueries({ queryKey: ["machinery", id] });
-    await queryClient.invalidateQueries({ queryKey: ["machinery-all"] });
-    await queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
-    toast.success("Booking saved");
+    const costPerAcre =
+      area > 0 ? rentalCost / area : 0;
+
+    return {
+      area,
+      numberOfDays,
+      hoursNeeded,
+      rentalCost,
+      estimatedMarketAlternative,
+      savings,
+      costPerAcre,
+    };
+  }, [acres, days, pricingMode, machinery]);
+
+  const handleBooking = () => {
+    setBookingSent(true);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-6">
+      {/* BACK */}
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/machinery" })}
+        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Machinery
+      </button>
 
-  if (error) {
-    return (
-      <div className="card-surface p-8 text-center">
-        <p className="text-sm text-destructive">Could not load this listing: {error.message}</p>
-        <Button className="mt-3" onClick={() => void refetch()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-  if (!machinery) {
-    return (
-      <div className="card-surface p-10 text-center">
-        <p className="font-medium">This machinery listing no longer exists.</p>
-        <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }} className="mt-4 inline-block">
-          <Button>Back to marketplace</Button>
-        </Link>
-      </div>
-    );
-  }
+      <section className="card-surface overflow-hidden">
+        <div className="grid lg:grid-cols-2">
+          {/* IMAGE */}
+          <div className="relative min-h-[280px] bg-secondary">
+            <img
+              src={machinery.image}
+              alt={machinery.name}
+              className="h-full min-h-[280px] w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
 
-  if (confirmed) {
-    return (
-      <div className="mx-auto max-w-xl">
-        <div className="card-surface p-8 text-center">
-          <CheckCircle2 className="mx-auto h-14 w-14 text-success" />
-          <h1 className="mt-4 text-2xl font-semibold">Booking confirmed</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your request has been saved and the owner has been notified.
-          </p>
-          <dl className="mt-6 space-y-2 text-left text-sm">
-            <Row label="Machinery" value={machinery.name} />
-            <Row label="Owner" value={machinery.profiles?.name ?? "Farmer"} />
-            <Row label="Dates" value={`${start} → ${end} (${days} day${days > 1 ? "s" : ""})`} />
-            <Row label="Total" value={formatINR(confirmed.total)} />
-            <Row label="Status" value="Pending owner confirmation" />
-            <Row label="Booking ID" value={confirmed.id.slice(0, 8)} />
-          </dl>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link to="/bookings">
-              <Button className="h-12 px-6">Go to My Bookings</Button>
-            </Link>
-            <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }}>
-              <Button variant="outline" className="h-12 px-6">
-                Keep browsing
-              </Button>
-            </Link>
+            <div className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1.5 text-xs font-semibold">
+              {machinery.category}
+            </div>
+          </div>
+
+          {/* DETAILS */}
+          <div className="p-6">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="h-5 w-5 text-primary" />
+
+              <span className="text-sm font-semibold text-primary">
+                VERIFIED MACHINERY
+              </span>
+            </div>
+
+            <h1 className="mt-2 text-3xl font-bold">
+              {machinery.name}
+            </h1>
+
+            <p className="mt-2 text-sm text-muted-foreground">
+              Reliable farm machinery available for local farmers.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              <DetailRow
+                icon={Users}
+                label="Owner"
+                value={machinery.owner}
+              />
+
+              <DetailRow
+                icon={MapPin}
+                label="Location"
+                value={`${machinery.location} • ${machinery.distance} km away`}
+              />
+
+              <DetailRow
+                icon={IndianRupee}
+                label="Rental"
+                value={`₹${machinery.pricePerDay.toLocaleString(
+                  "en-IN",
+                )}/day`}
+              />
+
+              <DetailRow
+                icon={Clock3}
+                label="Hourly"
+                value={`₹${machinery.pricePerHour.toLocaleString(
+                  "en-IN",
+                )}/hour`}
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
+                ★ {machinery.rating}
+              </span>
+
+              <span className="rounded-full bg-secondary px-3 py-1.5 text-sm">
+                {machinery.reviews} reviews
+              </span>
+
+              <span
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                  machinery.available
+                    ? "bg-primary/10 text-primary"
+                    : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {machinery.available
+                  ? "Available"
+                  : "Currently unavailable"}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      </section>
 
-  const isOwner = machinery.owner_id === user?.id;
+      {/* =====================================================
+          WHY MACHINERY MATTERS
+      ===================================================== */}
 
-  return (
-    <div className="space-y-5">
-      <Link to="/machinery" search={{ q: '', category: '', start: '', end: '' }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Back to marketplace
-      </Link>
+      <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+        <div className="flex gap-3">
+          <Tractor className="mt-1 h-6 w-6 shrink-0 text-primary" />
 
-      <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-5">
-          <img
-            src={machinery.image_url || categoryImage(machinery.category)}
-            alt={machinery.name}
-            width={1024}
-            height={640}
-            className="h-64 w-full rounded-2xl border border-border object-cover sm:h-80"
+          <div>
+            <h2 className="font-semibold">
+              Lower your production cost → improve net realization
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Machinery access helps farmers avoid large upfront
+              equipment costs and reduce cultivation expenses. The
+              money saved can improve the farmer's final net
+              realization after selling the crop.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          COST CALCULATOR
+      ===================================================== */}
+
+      <section className="card-surface p-6">
+        <div>
+          <p className="text-sm font-semibold text-primary">
+            MACHINERY COST CALCULATOR
+          </p>
+
+          <h2 className="mt-1 text-2xl font-semibold">
+            Estimate your farming cost
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Calculate the approximate machinery cost before booking.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          {/* INPUTS */}
+          <div className="space-y-5">
+            <div>
+              <label className="text-sm font-medium">
+                Area to cultivate (acres)
+              </label>
+
+              <Input
+                className="mt-2"
+                type="number"
+                min="0.5"
+                step="0.5"
+                value={acres}
+                onChange={(event) =>
+                  setAcres(event.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">
+                Number of days
+              </label>
+
+              <Input
+                className="mt-2"
+                type="number"
+                min="1"
+                value={days}
+                onChange={(event) =>
+                  setDays(event.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">
+                Rental calculation
+              </label>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPricingMode("day")}
+                  className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                    pricingMode === "day"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border"
+                  }`}
+                >
+                  Per Day
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPricingMode("hour")}
+                  className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                    pricingMode === "hour"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border"
+                  }`}
+                >
+                  Per Hour
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-secondary p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Machine capacity
+                </span>
+
+                <span className="font-semibold">
+                  {machinery.acresPerHour} acres/hour
+                </span>
+              </div>
+
+              <div className="mt-3 flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Estimated working time
+                </span>
+
+                <span className="font-semibold">
+                  {calculation.hoursNeeded.toFixed(1)} hours
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* RESULT */}
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+            <p className="text-sm text-muted-foreground">
+              Estimated machinery cost
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              ₹
+              {calculation.rentalCost.toLocaleString(
+                "en-IN",
+                {
+                  maximumFractionDigits: 0,
+                },
+              )}
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              for {calculation.area} acre
+              {calculation.area !== 1 ? "s" : ""}
+            </p>
+
+            <div className="mt-6 space-y-3">
+              <ResultRow
+                label="Cost per acre"
+                value={`₹${calculation.costPerAcre.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 0,
+                  },
+                )}`}
+              />
+
+              <ResultRow
+                label="Estimated alternative cost"
+                value={`₹${calculation.estimatedMarketAlternative.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 0,
+                  },
+                )}`}
+              />
+
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <span className="font-medium">
+                  Potential savings
+                </span>
+
+                <span className="text-lg font-bold text-primary">
+                  ₹
+                  {calculation.savings.toLocaleString(
+                    "en-IN",
+                    {
+                      maximumFractionDigits: 0,
+                    },
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Savings are an illustrative estimate for this prototype.
+          Actual costs depend on crop, field conditions, fuel,
+          operator charges and local rental rates.
+        </p>
+      </section>
+
+      {/* =====================================================
+          BOOKING
+      ===================================================== */}
+
+      <section className="card-surface p-6">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <p className="text-sm font-semibold text-primary">
+              BOOK MACHINERY
+            </p>
+
+            <h2 className="mt-1 text-2xl font-semibold">
+              Request this machine
+            </h2>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Send a booking request to the machinery owner.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-secondary px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Estimated cost
+            </p>
+
+            <p className="text-xl font-bold">
+              ₹
+              {calculation.rentalCost.toLocaleString(
+                "en-IN",
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <BookingInfo
+            icon={CalendarDays}
+            title="Duration"
+            value={`${calculation.numberOfDays} day${
+              calculation.numberOfDays !== 1 ? "s" : ""
+            }`}
           />
 
-          <div className="card-surface p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <span className="text-xs font-semibold text-muted-foreground">
-                  {machinery.category}
-                </span>
-                <h1 className="text-2xl font-semibold">{machinery.name}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {[machinery.brand, machinery.model].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <span className="flex items-center gap-1 text-lg font-semibold">
-                <Star className="h-5 w-5 fill-warning text-warning" />
-                {Number(machinery.rating).toFixed(1)}
-              </span>
-            </div>
+          <BookingInfo
+            icon={MapPin}
+            title="Distance"
+            value={`${machinery.distance} km`}
+          />
 
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {[machinery.village, machinery.district, machinery.state]
-                  .filter(Boolean)
-                  .join(", ") || "Location not set"}
-              </span>
-              {distance != null && <span>📏 {distance} km away</span>}
-              <span className="flex items-center gap-1">
-                Owner: <span className="font-medium text-foreground">{machinery.profiles?.name}</span>
-                {machinery.profiles?.is_verified && (
-                  <BadgeCheck className="h-4 w-4 text-success" />
-                )}
-              </span>
-            </div>
-
-            {machinery.description && (
-              <p className="mt-4 whitespace-pre-line text-sm">{machinery.description}</p>
-            )}
-            {machinery.terms && (
-              <div className="mt-4 rounded-xl bg-muted p-4 text-sm">
-                <p className="font-medium">Rental terms</p>
-                <p className="mt-1 whitespace-pre-line text-muted-foreground">{machinery.terms}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="card-surface p-5">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <CalendarDays className="h-5 w-5" /> Availability
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Listed as available{" "}
-              {machinery.available_from ? `from ${machinery.available_from}` : "immediately"}
-              {machinery.available_until ? ` until ${machinery.available_until}` : ""}.
-            </p>
-            <div className="mt-3">
-              <p className="text-sm font-medium">Already booked dates</p>
-              {booked.length === 0 ? (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  No bookings yet — all dates in the window are open.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-1 text-sm">
-                  {booked.map((b) => (
-                    <li key={b.id} className="rounded-lg bg-muted px-3 py-2">
-                      {b.start_date} → {b.end_date}{" "}
-                      <span className="text-muted-foreground">({b.status})</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <div className="card-surface p-5">
-            <h2 className="font-semibold">Reviews ({data?.reviews.length ?? 0})</h2>
-            {(data?.reviews.length ?? 0) === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                No reviews yet. Reviews appear after a rental is completed.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {data?.reviews.map((r) => (
-                  <li key={r.id} className="rounded-xl bg-muted p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{r.reviewer?.name ?? "Farmer"}</span>
-                      <span className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-warning text-warning" /> {r.rating}
-                      </span>
-                    </div>
-                    {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <BookingInfo
+            icon={ShieldCheck}
+            title="Owner"
+            value="Verified"
+          />
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <div className="card-surface p-5">
-            <p className="text-2xl font-semibold">
-              {formatINR(machinery.price_per_day)}
-              <span className="text-base font-normal text-muted-foreground">/day</span>
-            </p>
-
-            <div className="mt-4 space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="s">Start date</Label>
-                <Input
-                  id="s"
-                  type="date"
-                  className="h-12"
-                  min={toISODate(new Date())}
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                />
+        <div className="mt-6">
+          {bookingSent ? (
+            <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Check className="h-5 w-5" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="e">End date</Label>
-                <Input
-                  id="e"
-                  type="date"
-                  className="h-12"
-                  min={start || toISODate(new Date())}
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                />
-              </div>
-            </div>
 
-            {start && end && end >= start && (
-              <div className="mt-4 rounded-xl bg-muted p-4 text-sm">
-                {conflict === "booked" && (
-                  <p className="flex items-center gap-2 font-medium text-destructive">
-                    <XCircle className="h-4 w-4" /> Already booked for these dates.
-                  </p>
-                )}
-                {conflict === "window" && (
-                  <p className="flex items-center gap-2 font-medium text-destructive">
-                    <XCircle className="h-4 w-4" /> Outside the owner's availability window.
-                  </p>
-                )}
-                {!conflict && (
-                  <p className="flex items-center gap-2 font-medium text-success">
-                    <CheckCircle2 className="h-4 w-4" /> Available for your selected dates.
-                  </p>
-                )}
-                <p className="mt-3 flex justify-between">
-                  <span>
-                    {days} day{days > 1 ? "s" : ""} × {formatINR(machinery.price_per_day)}
-                  </span>
-                  <span className="font-semibold">{formatINR(total)}</span>
+              <div>
+                <p className="font-semibold">
+                  Booking request sent
+                </p>
+
+                <p className="text-sm text-muted-foreground">
+                  The machinery owner can now confirm your request.
                 </p>
               </div>
-            )}
+            </div>
+          ) : (
+            <Button
+              className="h-12 w-full"
+              disabled={!machinery.available}
+              onClick={handleBooking}
+            >
+              <CalendarDays className="mr-2 h-5 w-5" />
 
-            <Button
-              className="mt-4 h-12 w-full text-base"
-              disabled={booking || isOwner || !start || !end || !!conflict}
-              onClick={() => void confirmBooking()}
-            >
-              {booking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isOwner ? "This is your listing" : "Confirm Booking"}
+              {machinery.available
+                ? "Request Machinery Booking"
+                : "Currently Unavailable"}
             </Button>
-            {!isOwner && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                Payment is settled directly with the owner. Kisan Connect records the booking.
-              </p>
-            )}
-            <Button
-              variant="outline"
-              className="mt-3 h-12 w-full"
-              onClick={() => void navigate({ to: "/bookings" })}
-            >
-              My Bookings
-            </Button>
-          </div>
-        </aside>
+          )}
+        </div>
+      </section>
+
+      {/* =====================================================
+          MARKET CONNECTION
+      ===================================================== */}
+
+      <section className="card-surface p-6">
+        <div className="flex items-center gap-2">
+          <IndianRupee className="h-5 w-5 text-primary" />
+
+          <h2 className="text-xl font-semibold">
+            Connect machinery savings with crop selling
+          </h2>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <Step
+            number="01"
+            title="Reduce Cost"
+            text="Rent machinery instead of purchasing expensive equipment."
+          />
+
+          <Step
+            number="02"
+            title="Improve Net Realization"
+            text="Lower cultivation costs mean more money remains with the farmer."
+          />
+
+          <Step
+            number="03"
+            title="Sell Better"
+            text="Use Kisan Connect's market intelligence and buyer offers to choose the best selling opportunity."
+          />
+        </div>
+
+        <Button
+          variant="outline"
+          className="mt-5"
+          onClick={() => navigate({ to: "/dashboard" })}
+        >
+          Go to Market Dashboard
+          <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+        </Button>
+      </section>
+
+      {/* FOOTER NOTE */}
+      <div className="flex items-start gap-3 rounded-xl bg-secondary p-4">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+
+        <p className="text-xs leading-5 text-muted-foreground">
+          Prototype machinery prices and calculations are
+          illustrative. Production deployment should use actual
+          machinery listings, availability calendars and booking
+          records from Supabase.
+        </p>
       </div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/* =========================================================
+   SMALL COMPONENTS
+========================================================= */
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof MapPin;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="flex justify-between gap-4 border-b border-border pb-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium">{value}</dd>
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground">
+          {label}
+        </p>
+
+        <p className="text-sm font-medium">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ResultRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-muted-foreground">
+        {label}
+      </span>
+
+      <span className="font-semibold">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function BookingInfo({
+  icon: Icon,
+  title,
+  value,
+}: {
+  icon: typeof CalendarDays;
+  title: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-secondary p-4">
+      <Icon className="h-5 w-5 text-primary" />
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        {title}
+      </p>
+
+      <p className="mt-1 font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Step({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <span className="text-sm font-bold text-primary">
+        {number}
+      </span>
+
+      <h3 className="mt-2 font-semibold">
+        {title}
+      </h3>
+
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">
+        {text}
+      </p>
     </div>
   );
 }

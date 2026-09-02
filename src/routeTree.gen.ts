@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedBuyerMarketplaceRouteImport } from './routes/_authenticated/buyer-marketplace'
 import { Route as AuthenticatedCommunityRouteImport } from './routes/_authenticated/community'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedListMachineryRouteImport } from './routes/_authenticated/list-machinery'
@@ -43,6 +44,12 @@ const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBuyerMarketplaceRoute =
+  AuthenticatedBuyerMarketplaceRouteImport.update({
+    id: '/buyer-marketplace',
+    path: '/buyer-marketplace',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCommunityRoute = AuthenticatedCommunityRouteImport.update({
   id: '/community',
   path: '/community',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
@@ -117,6 +125,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+  '/_authenticated/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/_authenticated/community': typeof AuthenticatedCommunityRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/list-machinery': typeof AuthenticatedListMachineryRoute
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bookings'
+    | '/buyer-marketplace'
     | '/community'
     | '/dashboard'
     | '/list-machinery'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bookings'
+    | '/buyer-marketplace'
     | '/community'
     | '/dashboard'
     | '/list-machinery'
@@ -182,6 +194,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/bookings'
+    | '/_authenticated/buyer-marketplace'
     | '/_authenticated/community'
     | '/_authenticated/dashboard'
     | '/_authenticated/list-machinery'
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/bookings'
       fullPath: '/bookings'
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/buyer-marketplace': {
+      id: '/_authenticated/buyer-marketplace'
+      path: '/buyer-marketplace'
+      fullPath: '/buyer-marketplace'
+      preLoaderRoute: typeof AuthenticatedBuyerMarketplaceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/community': {
@@ -305,6 +325,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
+  AuthenticatedBuyerMarketplaceRoute: typeof AuthenticatedBuyerMarketplaceRoute
   AuthenticatedCommunityRoute: typeof AuthenticatedCommunityRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedListMachineryRoute: typeof AuthenticatedListMachineryRoute
@@ -319,6 +340,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
+  AuthenticatedBuyerMarketplaceRoute: AuthenticatedBuyerMarketplaceRoute,
   AuthenticatedCommunityRoute: AuthenticatedCommunityRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedListMachineryRoute: AuthenticatedListMachineryRoute,
