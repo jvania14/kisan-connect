@@ -13,14 +13,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
-import { Route as AuthenticatedBuyerMarketplaceRouteImport } from './routes/_authenticated/buyer-marketplace'
 import { Route as AuthenticatedCommunityRouteImport } from './routes/_authenticated/community'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedListMachineryRouteImport } from './routes/_authenticated/list-machinery'
-import { Route as AuthenticatedListingsRouteImport } from './routes/_authenticated/listings'
+import { Route as AuthenticatedMarketOpportunityRouteImport } from './routes/_authenticated/market-opportunity'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedResiduesRouteImport } from './routes/_authenticated/residues'
+import { Route as AuthenticatedSellCropRouteImport } from './routes/_authenticated/sell-crop'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as AuthenticatedMachineryIndexRouteImport } from './routes/_authenticated/machinery.index'
 import { Route as AuthenticatedMachineryIdRouteImport } from './routes/_authenticated/machinery.$id'
@@ -44,12 +44,6 @@ const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBuyerMarketplaceRoute =
-  AuthenticatedBuyerMarketplaceRouteImport.update({
-    id: '/buyer-marketplace',
-    path: '/buyer-marketplace',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedCommunityRoute = AuthenticatedCommunityRouteImport.update({
   id: '/community',
   path: '/community',
@@ -66,11 +60,12 @@ const AuthenticatedListMachineryRoute =
     path: '/list-machinery',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedListingsRoute = AuthenticatedListingsRouteImport.update({
-  id: '/listings',
-  path: '/listings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
+const AuthenticatedMarketOpportunityRoute =
+  AuthenticatedMarketOpportunityRouteImport.update({
+    id: '/market-opportunity',
+    path: '/market-opportunity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedNotificationsRoute =
   AuthenticatedNotificationsRouteImport.update({
     id: '/notifications',
@@ -85,6 +80,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedResiduesRoute = AuthenticatedResiduesRouteImport.update({
   id: '/residues',
   path: '/residues',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSellCropRoute = AuthenticatedSellCropRouteImport.update({
+  id: '/sell-crop',
+  path: '/sell-crop',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedVoiceRoute = AuthenticatedVoiceRouteImport.update({
@@ -109,14 +109,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
-  '/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
-  '/listings': typeof AuthenticatedListingsRoute
+  '/market-opportunity': typeof AuthenticatedMarketOpportunityRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/residues': typeof AuthenticatedResiduesRoute
+  '/sell-crop': typeof AuthenticatedSellCropRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/machinery/': typeof AuthenticatedMachineryIndexRoute
@@ -125,14 +125,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bookings': typeof AuthenticatedBookingsRoute
-  '/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/community': typeof AuthenticatedCommunityRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/list-machinery': typeof AuthenticatedListMachineryRoute
-  '/listings': typeof AuthenticatedListingsRoute
+  '/market-opportunity': typeof AuthenticatedMarketOpportunityRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/residues': typeof AuthenticatedResiduesRoute
+  '/sell-crop': typeof AuthenticatedSellCropRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/machinery': typeof AuthenticatedMachineryIndexRoute
@@ -143,14 +143,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
-  '/_authenticated/buyer-marketplace': typeof AuthenticatedBuyerMarketplaceRoute
   '/_authenticated/community': typeof AuthenticatedCommunityRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/list-machinery': typeof AuthenticatedListMachineryRoute
-  '/_authenticated/listings': typeof AuthenticatedListingsRoute
+  '/_authenticated/market-opportunity': typeof AuthenticatedMarketOpportunityRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/residues': typeof AuthenticatedResiduesRoute
+  '/_authenticated/sell-crop': typeof AuthenticatedSellCropRoute
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/_authenticated/machinery/$id': typeof AuthenticatedMachineryIdRoute
   '/_authenticated/machinery/': typeof AuthenticatedMachineryIndexRoute
@@ -161,14 +161,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bookings'
-    | '/buyer-marketplace'
     | '/community'
     | '/dashboard'
     | '/list-machinery'
-    | '/listings'
+    | '/market-opportunity'
     | '/notifications'
     | '/profile'
     | '/residues'
+    | '/sell-crop'
     | '/voice'
     | '/machinery/$id'
     | '/machinery/'
@@ -177,14 +177,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bookings'
-    | '/buyer-marketplace'
     | '/community'
     | '/dashboard'
     | '/list-machinery'
-    | '/listings'
+    | '/market-opportunity'
     | '/notifications'
     | '/profile'
     | '/residues'
+    | '/sell-crop'
     | '/voice'
     | '/machinery/$id'
     | '/machinery'
@@ -194,14 +194,14 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/bookings'
-    | '/_authenticated/buyer-marketplace'
     | '/_authenticated/community'
     | '/_authenticated/dashboard'
     | '/_authenticated/list-machinery'
-    | '/_authenticated/listings'
+    | '/_authenticated/market-opportunity'
     | '/_authenticated/notifications'
     | '/_authenticated/profile'
     | '/_authenticated/residues'
+    | '/_authenticated/sell-crop'
     | '/_authenticated/voice'
     | '/_authenticated/machinery/$id'
     | '/_authenticated/machinery/'
@@ -243,13 +243,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/buyer-marketplace': {
-      id: '/_authenticated/buyer-marketplace'
-      path: '/buyer-marketplace'
-      fullPath: '/buyer-marketplace'
-      preLoaderRoute: typeof AuthenticatedBuyerMarketplaceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/community': {
       id: '/_authenticated/community'
       path: '/community'
@@ -271,11 +264,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListMachineryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/listings': {
-      id: '/_authenticated/listings'
-      path: '/listings'
-      fullPath: '/listings'
-      preLoaderRoute: typeof AuthenticatedListingsRouteImport
+    '/_authenticated/market-opportunity': {
+      id: '/_authenticated/market-opportunity'
+      path: '/market-opportunity'
+      fullPath: '/market-opportunity'
+      preLoaderRoute: typeof AuthenticatedMarketOpportunityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/notifications': {
@@ -297,6 +290,13 @@ declare module '@tanstack/react-router' {
       path: '/residues'
       fullPath: '/residues'
       preLoaderRoute: typeof AuthenticatedResiduesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sell-crop': {
+      id: '/_authenticated/sell-crop'
+      path: '/sell-crop'
+      fullPath: '/sell-crop'
+      preLoaderRoute: typeof AuthenticatedSellCropRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/voice': {
@@ -325,14 +325,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
-  AuthenticatedBuyerMarketplaceRoute: typeof AuthenticatedBuyerMarketplaceRoute
   AuthenticatedCommunityRoute: typeof AuthenticatedCommunityRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedListMachineryRoute: typeof AuthenticatedListMachineryRoute
-  AuthenticatedListingsRoute: typeof AuthenticatedListingsRoute
+  AuthenticatedMarketOpportunityRoute: typeof AuthenticatedMarketOpportunityRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedResiduesRoute: typeof AuthenticatedResiduesRoute
+  AuthenticatedSellCropRoute: typeof AuthenticatedSellCropRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
   AuthenticatedMachineryIdRoute: typeof AuthenticatedMachineryIdRoute
   AuthenticatedMachineryIndexRoute: typeof AuthenticatedMachineryIndexRoute
@@ -340,14 +340,14 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
-  AuthenticatedBuyerMarketplaceRoute: AuthenticatedBuyerMarketplaceRoute,
   AuthenticatedCommunityRoute: AuthenticatedCommunityRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedListMachineryRoute: AuthenticatedListMachineryRoute,
-  AuthenticatedListingsRoute: AuthenticatedListingsRoute,
+  AuthenticatedMarketOpportunityRoute: AuthenticatedMarketOpportunityRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedResiduesRoute: AuthenticatedResiduesRoute,
+  AuthenticatedSellCropRoute: AuthenticatedSellCropRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
   AuthenticatedMachineryIdRoute: AuthenticatedMachineryIdRoute,
   AuthenticatedMachineryIndexRoute: AuthenticatedMachineryIndexRoute,

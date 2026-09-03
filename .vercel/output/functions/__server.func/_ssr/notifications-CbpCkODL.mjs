@@ -1,9 +1,9 @@
 import { i as __toESM } from "../_runtime.mjs";
-import { u as require_react } from "../_libs/@floating-ui/react-dom+[...].mjs";
+import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
 import { g as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
-import { o as require_jsx_runtime } from "../_libs/@radix-ui/react-collection+[...].mjs";
+import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
 import { t as Button } from "./button-DRsC1qZi.mjs";
-import { $ as ChevronRight, A as PackageCheck, N as MessageSquare, X as CircleDollarSign, dt as ArrowLeft, f as TrendingUp, l as UserCheck, n as X, nt as CheckCheck, ot as Bell, p as Tractor, q as Clock3, st as BellRing, tt as Check, y as ShoppingCart } from "../_libs/lucide-react.mjs";
+import { $ as ChevronRight, M as MessageSquare, X as CircleDollarSign, c as UserCheck, d as TrendingUp, f as Tractor, ft as ArrowLeft, k as PackageCheck, n as X, nt as CheckCheck, ot as Bell, q as Clock3, st as BellRing, tt as Check, y as ShoppingCart } from "../_libs/lucide-react.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/notifications-CbpCkODL.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();

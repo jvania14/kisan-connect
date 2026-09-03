@@ -1,18 +1,27 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import {
+  createFileRoute,
+  useNavigate,
+} from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
   CheckCircle2,
   Clock3,
   IndianRupee,
+  Loader2,
   MapPin,
   PackageCheck,
-  Phone,
   ShieldCheck,
   Tractor,
+  Users,
   XCircle,
+  AlertCircle,
 } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,112 +33,176 @@ export const Route = createFileRoute(
 });
 
 type BookingStatus =
-  | "Requested"
-  | "Confirmed"
-  | "In Progress"
-  | "Completed"
-  | "Cancelled";
+  | "pending"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
 
 type Booking = {
   id: string;
-  machine: string;
-  category: string;
-  owner: string;
-  location: string;
-  distance: number;
-  date: string;
-  time: string;
-  duration: string;
-  rate: number;
-  total: number;
+  machinery_id: string;
+  renter_id: string;
+  owner_id: string;
+  start_date: string;
+  end_date: string;
+  total_price: number;
   status: BookingStatus;
-  verified: boolean;
+  created_at: string;
+
+  machinery?: {
+    name: string;
+    category: string;
+    district: string | null;
+    village: string | null;
+    price_per_day: number;
+    image_url: string | null;
+  } | null;
 };
 
-const INITIAL_BOOKINGS: Booking[] = [
-  {
-    id: "BK-1048",
-    machine: "Mahindra 575 DI Tractor",
-    category: "Tractor",
-    owner: "Ramesh Patil",
-    location: "Nashik",
-    distance: 12,
-    date: "Sep 04, 2026",
-    time: "08:00 AM",
-    duration: "1 day",
-    rate: 4500,
-    total: 4500,
-    status: "Confirmed",
-    verified: true,
-  },
-  {
-    id: "BK-1032",
-    machine: "Fieldking Rotavator",
-    category: "Rotavator",
-    owner: "Ganesh Shinde",
-    location: "Ahmednagar",
-    distance: 24,
-    date: "Sep 07, 2026",
-    time: "07:30 AM",
-    duration: "6 hours",
-    rate: 550,
-    total: 3300,
-    status: "Requested",
-    verified: true,
-  },
-  {
-    id: "BK-0981",
-    machine: "Sonalika Multi Crop Harvester",
-    category: "Harvester",
-    owner: "Maharashtra Farm Services",
-    location: "Nashik",
-    distance: 18,
-    date: "Aug 28, 2026",
-    time: "09:00 AM",
-    duration: "1 day",
-    rate: 8000,
-    total: 8000,
-    status: "Completed",
-    verified: true,
-  },
-];
+function formatDate(value: string) {
+  return new Date(
+    `${value}T00:00:00`,
+  ).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-const STATUS_FILTERS = [
-  "All",
-  "Requested",
-  "Confirmed",
-  "In Progress",
-  "Completed",
-  "Cancelled",
-] as const;
+function getDuration(
+  start: string,
+  end: string,
+) {
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+
+  const diff =
+    Math.floor(
+      (endDate.getTime() -
+        startDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    ) + 1;
+
+  return Math.max(diff, 1);
+}
+
+function statusLabel(status: BookingStatus) {
+  switch (status) {
+    case "pending":
+      return "Requested";
+
+    case "confirmed":
+      return "Confirmed";
+
+    case "completed":
+      return "Completed";
+
+    case "cancelled":
+      return "Cancelled";
+
+    default:
+      return status;
+  }
+}
 
 function MachineryBookings() {
+  const { user } = useAuth();
   const navigate = useNavigate();
-
-  const [bookings, setBookings] =
-    useState<Booking[]>(INITIAL_BOOKINGS);
+  const queryClient = useQueryClient();
 
   const [filter, setFilter] =
-    useState<(typeof STATUS_FILTERS)[number]>("All");
+    useState<"all" | BookingStatus>("all");
+
+  const [search, setSearch] = useState("");
 
   const [selectedBooking, setSelectedBooking] =
     useState<Booking | null>(null);
 
-  const [search, setSearch] = useState("");
+  const [actionLoading, setActionLoading] =
+    useState(false);
+
+  const [actionError, setActionError] =
+    useState("");
+
+  const {
+    data: bookings = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["my-machinery-bookings", user?.id],
+
+    enabled: !!user?.id,
+
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      /*
+       * Fetch bookings where the logged-in user is either:
+       * renter OR machinery owner.
+       *
+       * This lets the same page work for both sides of
+       * the machinery-sharing marketplace.
+       */
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(
+          `
+            id,
+            machinery_id,
+            renter_id,
+            owner_id,
+            start_date,
+            end_date,
+            total_price,
+            status,
+            created_at,
+            machinery:machinery_id (
+              name,
+              category,
+              district,
+              village,
+              price_per_day,
+              image_url
+            )
+          `,
+        )
+        .or(
+          `renter_id.eq.${user.id},owner_id.eq.${user.id}`,
+        )
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []) as unknown as Booking[];
+    },
+  });
 
   const filteredBookings = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return bookings.filter((booking) => {
       const matchesStatus =
-        filter === "All" ||
+        filter === "all" ||
         booking.status === filter;
+
+      const machineName =
+        booking.machinery?.name ?? "";
+
+      const category =
+        booking.machinery?.category ?? "";
+
+      const district =
+        booking.machinery?.district ?? "";
 
       const matchesSearch =
         !query ||
-        booking.machine.toLowerCase().includes(query) ||
-        booking.owner.toLowerCase().includes(query) ||
-        booking.location.toLowerCase().includes(query) ||
+        machineName.toLowerCase().includes(query) ||
+        category.toLowerCase().includes(query) ||
+        district.toLowerCase().includes(query) ||
         booking.id.toLowerCase().includes(query);
 
       return matchesStatus && matchesSearch;
@@ -138,56 +211,171 @@ function MachineryBookings() {
 
   const activeCount = bookings.filter(
     (booking) =>
-      booking.status === "Requested" ||
-      booking.status === "Confirmed" ||
-      booking.status === "In Progress",
+      booking.status === "pending" ||
+      booking.status === "confirmed",
   ).length;
 
   const completedCount = bookings.filter(
-    (booking) => booking.status === "Completed",
+    (booking) =>
+      booking.status === "completed",
   ).length;
 
   const totalSpent = bookings
-    .filter((booking) => booking.status === "Completed")
-    .reduce((sum, booking) => sum + booking.total, 0);
-
-  function cancelBooking(id: string) {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === id
-          ? { ...booking, status: "Cancelled" }
-          : booking,
-      ),
+    .filter(
+      (booking) =>
+        booking.renter_id === user?.id &&
+        booking.status !== "cancelled",
+    )
+    .reduce(
+      (sum, booking) =>
+        sum + Number(booking.total_price),
+      0,
     );
 
-    setSelectedBooking(null);
+  async function cancelBooking(id: string) {
+    if (!user?.id) return;
+
+    setActionLoading(true);
+    setActionError("");
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "cancelled",
+        })
+        .eq("id", id)
+        .eq("renter_id", user.id)
+        .eq("status", "pending");
+
+      if (error) {
+        throw error;
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["my-machinery-bookings"],
+      });
+
+      setSelectedBooking(null);
+    } catch (err) {
+      console.error(err);
+
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Unable to cancel booking.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
   }
 
-  function simulateConfirmation(id: string) {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === id
-          ? { ...booking, status: "Confirmed" }
-          : booking,
-      ),
-    );
+  async function confirmBooking(id: string) {
+    if (!user?.id) return;
 
-    setSelectedBooking((current) =>
-      current?.id === id
-        ? { ...current, status: "Confirmed" }
-        : current,
-    );
+    setActionLoading(true);
+    setActionError("");
+
+    try {
+      /*
+       * Only the machinery owner can confirm.
+       */
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "confirmed",
+        })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .eq("status", "pending");
+
+      if (error) {
+        throw error;
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["my-machinery-bookings"],
+      });
+
+      setSelectedBooking(null);
+    } catch (err) {
+      console.error(err);
+
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Unable to confirm booking.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function completeBooking(id: string) {
+    if (!user?.id) return;
+
+    setActionLoading(true);
+    setActionError("");
+
+    try {
+      const booking = bookings.find(
+        (item) => item.id === id,
+      );
+
+      if (!booking) {
+        throw new Error("Booking not found.");
+      }
+
+      const isParty =
+        booking.renter_id === user.id ||
+        booking.owner_id === user.id;
+
+      if (!isParty) {
+        throw new Error(
+          "You are not allowed to update this booking.",
+        );
+      }
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "completed",
+        })
+        .eq("id", id)
+        .in("status", ["confirmed"]);
+
+      if (error) {
+        throw error;
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["my-machinery-bookings"],
+      });
+
+      setSelectedBooking(null);
+    } catch (err) {
+      console.error(err);
+
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Unable to complete booking.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   return (
     <div className="space-y-6">
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
 
+      {/* HEADER */}
       <section className="card-surface p-6">
+
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+
           <div className="flex items-start gap-4">
+
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
               <CalendarDays className="h-6 w-6 text-primary" />
             </div>
@@ -198,9 +386,8 @@ function MachineryBookings() {
               </h1>
 
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Track equipment requests, confirmed rentals,
-                work progress and completed bookings from one
-                place.
+                Track your machinery requests,
+                confirmed rentals and completed bookings.
               </p>
             </div>
           </div>
@@ -224,11 +411,9 @@ function MachineryBookings() {
         </div>
       </section>
 
-      {/* =====================================================
-          SUMMARY
-      ===================================================== */}
-
+      {/* SUMMARY */}
       <section className="grid gap-4 md:grid-cols-3">
+
         <SummaryCard
           icon={Clock3}
           label="Active bookings"
@@ -245,60 +430,88 @@ function MachineryBookings() {
 
         <SummaryCard
           icon={IndianRupee}
-          label="Completed spend"
-          value={`₹${totalSpent.toLocaleString("en-IN")}`}
-          description="Across completed demo bookings"
+          label="Rental value"
+          value={`₹${totalSpent.toLocaleString(
+            "en-IN",
+          )}`}
+          description="Your machinery rental transactions"
         />
       </section>
 
-      {/* =====================================================
-          SEARCH
-      ===================================================== */}
-
+      {/* SEARCH */}
       <section className="card-surface p-4">
+
         <Input
           value={search}
           onChange={(event) =>
             setSearch(event.target.value)
           }
-          placeholder="Search booking, machine, owner or location..."
+          placeholder="Search machine, category, location or booking ID..."
         />
 
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {STATUS_FILTERS.map((status) => (
+
+          {[
+            ["all", "All"],
+            ["pending", "Requested"],
+            ["confirmed", "Confirmed"],
+            ["completed", "Completed"],
+            ["cancelled", "Cancelled"],
+          ].map(([value, label]) => (
             <button
-              key={status}
+              key={value}
               type="button"
-              onClick={() => setFilter(status)}
+              onClick={() =>
+                setFilter(
+                  value as
+                    | "all"
+                    | BookingStatus,
+                )
+              }
               className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold ${
-                filter === status
+                filter === value
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary hover:bg-secondary/70"
               }`}
             >
-              {status}
+              {label}
             </button>
           ))}
         </div>
       </section>
 
-      {/* =====================================================
-          BOOKINGS
-      ===================================================== */}
+      {/* LOADING */}
+      {isLoading && (
+        <section className="card-surface flex min-h-60 items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading your bookings...
+          </div>
+        </section>
+      )}
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">
-            Your bookings
+      {/* ERROR */}
+      {error && !isLoading && (
+        <section className="card-surface p-8 text-center">
+
+          <AlertCircle className="mx-auto h-10 w-10 text-destructive" />
+
+          <h2 className="mt-4 font-bold">
+            Could not load bookings
           </h2>
 
-          <p className="text-sm text-muted-foreground">
-            {filteredBookings.length} booking
-            {filteredBookings.length !== 1 ? "s" : ""} found
+          <p className="mt-2 text-sm text-muted-foreground">
+            {error instanceof Error
+              ? error.message
+              : "Please try again."}
           </p>
-        </div>
+        </section>
+      )}
 
-        {filteredBookings.length === 0 ? (
+      {/* BOOKINGS */}
+      {!isLoading &&
+        !error &&
+        filteredBookings.length === 0 && (
           <EmptyBookings
             onFind={() =>
               navigate({
@@ -312,26 +525,50 @@ function MachineryBookings() {
               })
             }
           />
-        ) : (
-          <div className="space-y-4">
-            {filteredBookings.map((booking) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                onView={() =>
-                  setSelectedBooking(booking)
-                }
-              />
-            ))}
-          </div>
         )}
-      </section>
 
-      {/* =====================================================
-          BOOKING FLOW
-      ===================================================== */}
+      {!isLoading &&
+        !error &&
+        filteredBookings.length > 0 && (
+          <section className="space-y-4">
 
+            <div>
+              <h2 className="text-lg font-semibold">
+                Your bookings
+              </h2>
+
+              <p className="text-sm text-muted-foreground">
+                {filteredBookings.length} booking
+                {filteredBookings.length !== 1
+                  ? "s"
+                  : ""}{" "}
+                found
+              </p>
+            </div>
+
+            <div className="space-y-4">
+
+              {filteredBookings.map(
+                (booking) => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    currentUserId={user?.id}
+                    onView={() =>
+                      setSelectedBooking(
+                        booking,
+                      )
+                    }
+                  />
+                ),
+              )}
+            </div>
+          </section>
+        )}
+
+      {/* HOW IT WORKS */}
       <section className="card-surface p-6">
+
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-5 w-5 text-primary" />
 
@@ -341,166 +578,179 @@ function MachineryBookings() {
             </h2>
 
             <p className="text-sm text-muted-foreground">
-              A simple verified flow for local equipment
-              sharing.
+              A verified availability and booking flow.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
+
           <FlowStep
             number="01"
             title="Request"
-            text="Select equipment and submit your requirement."
+            text="Choose machinery and dates."
           />
 
           <FlowStep
             number="02"
             title="Confirm"
-            text="Owner confirms the date, rate and availability."
+            text="Owner confirms the request."
           />
 
           <FlowStep
             number="03"
             title="Use"
-            text="Equipment is delivered or collected as agreed."
+            text="Use the machinery during the booked period."
           />
 
           <FlowStep
             number="04"
             title="Complete"
-            text="Booking is closed after successful work."
+            text="Close the booking after successful work."
           />
         </div>
       </section>
 
-      {/* =====================================================
-          MARKET LINKAGE CONNECTION
-      ===================================================== */}
-
-      <section className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-bold text-primary">
-              WHY THIS MODULE EXISTS
-            </p>
-
-            <h2 className="mt-1 text-xl font-bold">
-              Machinery cost affects your final crop income
-            </h2>
-
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Before accepting a buyer offer, farmers can
-              understand their operating costs and make a
-              better net-realization decision.
-            </p>
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={() =>
-              navigate({
-                to: "/dashboard",
-              })
-            }
-          >
-            Open Market Dashboard
-          </Button>
-        </div>
-      </section>
-
-      {/* =====================================================
-          DETAILS
-      ===================================================== */}
-
+      {/* DETAILS MODAL */}
       {selectedBooking && (
         <BookingDetails
           booking={selectedBooking}
-          onClose={() => setSelectedBooking(null)}
+          currentUserId={user?.id}
+          loading={actionLoading}
+          error={actionError}
+          onClose={() => {
+            setSelectedBooking(null);
+            setActionError("");
+          }}
           onCancel={() =>
-            cancelBooking(selectedBooking.id)
+            void cancelBooking(
+              selectedBooking.id,
+            )
           }
           onConfirm={() =>
-            simulateConfirmation(selectedBooking.id)
+            void confirmBooking(
+              selectedBooking.id,
+            )
+          }
+          onComplete={() =>
+            void completeBooking(
+              selectedBooking.id,
+            )
           }
         />
       )}
-
-      <div className="rounded-xl bg-secondary p-4 text-xs leading-5 text-muted-foreground">
-        <strong>Prototype note:</strong> booking records and
-        statuses shown here are demonstration data. Production
-        deployment should connect these actions to verified
-        owners, real availability, payment records and
-        transaction history.
-      </div>
     </div>
   );
 }
 
-/* =========================================================
-   BOOKING CARD
-========================================================= */
-
 function BookingCard({
   booking,
+  currentUserId,
   onView,
 }: {
   booking: Booking;
+  currentUserId?: string;
   onView: () => void;
 }) {
+  const machine = booking.machinery;
+
+  const isOwner =
+    booking.owner_id === currentUserId;
+
+  const location = [
+    machine?.village,
+    machine?.district,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <article className="card-surface p-5">
+
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
         <div className="flex gap-4">
+
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-secondary">
             <Tractor className="h-7 w-7 text-muted-foreground" />
           </div>
 
           <div>
+
             <div className="flex flex-wrap items-center gap-2">
+
               <h3 className="font-semibold">
-                {booking.machine}
+                {machine?.name ??
+                  "Agricultural Machinery"}
               </h3>
 
-              <StatusBadge status={booking.status} />
+              <StatusBadge
+                status={booking.status}
+              />
             </div>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              Booking {booking.id} • {booking.category}
+              Booking {booking.id.slice(0, 8)} •{" "}
+              {machine?.category ?? "Machinery"}
             </p>
 
             <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              <Info
-                icon={Users}
-                text={booking.owner}
-              />
-
-              <Info
-                icon={MapPin}
-                text={`${booking.location} • ${booking.distance} km`}
-              />
 
               <Info
                 icon={CalendarDays}
-                text={booking.date}
+                text={`${formatDate(
+                  booking.start_date,
+                )} → ${formatDate(
+                  booking.end_date,
+                )}`}
               />
 
               <Info
                 icon={Clock3}
-                text={`${booking.time} • ${booking.duration}`}
+                text={`${getDuration(
+                  booking.start_date,
+                  booking.end_date,
+                )} day${
+                  getDuration(
+                    booking.start_date,
+                    booking.end_date,
+                  ) === 1
+                    ? ""
+                    : "s"
+                }`}
+              />
+
+              <Info
+                icon={MapPin}
+                text={
+                  location ||
+                  "Location not specified"
+                }
+              />
+
+              <Info
+                icon={Users}
+                text={
+                  isOwner
+                    ? "You are the machinery owner"
+                    : "You requested this machinery"
+                }
               />
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-5 border-t border-border pt-4 lg:min-w-60 lg:border-l lg:border-t-0 lg:pl-5">
+
           <div>
             <p className="text-xs text-muted-foreground">
               Total rental
             </p>
 
             <p className="mt-1 text-lg font-bold">
-              ₹{booking.total.toLocaleString("en-IN")}
+              ₹{Number(
+                booking.total_price,
+              ).toLocaleString("en-IN")}
             </p>
           </div>
 
@@ -516,40 +766,64 @@ function BookingCard({
   );
 }
 
-/* =========================================================
-   DETAILS
-========================================================= */
-
 function BookingDetails({
   booking,
+  currentUserId,
+  loading,
+  error,
   onClose,
   onCancel,
   onConfirm,
+  onComplete,
 }: {
   booking: Booking;
+  currentUserId?: string;
+  loading: boolean;
+  error: string;
   onClose: () => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onComplete: () => void;
 }) {
+  const isOwner =
+    booking.owner_id === currentUserId;
+
+  const isRenter =
+    booking.renter_id === currentUserId;
+
   const canCancel =
-    booking.status === "Requested" ||
-    booking.status === "Confirmed";
+    isRenter &&
+    booking.status === "pending";
+
+  const canConfirm =
+    isOwner &&
+    booking.status === "pending";
+
+  const canComplete =
+    (isOwner || isRenter) &&
+    booking.status === "confirmed";
+
+  const machine = booking.machinery;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-background shadow-2xl">
+
         <div className="flex items-start justify-between border-b border-border p-5">
+
           <div>
             <p className="text-xs font-semibold text-primary">
-              {booking.id}
+              Booking #{booking.id.slice(0, 8)}
             </p>
 
             <h2 className="mt-1 text-xl font-bold">
-              {booking.machine}
+              {machine?.name ??
+                "Agricultural Machinery"}
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              {booking.owner} • {booking.location}
+              {machine?.category ?? "Machinery"}
             </p>
           </div>
 
@@ -563,93 +837,115 @@ function BookingDetails({
         </div>
 
         <div className="space-y-6 p-5">
-          <BookingTimeline status={booking.status} />
+
+          <BookingTimeline
+            status={booking.status}
+          />
+
+          {error && (
+            <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              {error}
+            </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
+
             <DetailBox
               icon={CalendarDays}
-              label="Date"
-              value={booking.date}
+              label="Start date"
+              value={formatDate(
+                booking.start_date,
+              )}
+            />
+
+            <DetailBox
+              icon={CalendarDays}
+              label="End date"
+              value={formatDate(
+                booking.end_date,
+              )}
             />
 
             <DetailBox
               icon={Clock3}
-              label="Time"
-              value={booking.time}
-            />
-
-            <DetailBox
-              icon={MapPin}
-              label="Location"
-              value={`${booking.location} (${booking.distance} km)`}
+              label="Duration"
+              value={`${getDuration(
+                booking.start_date,
+                booking.end_date,
+              )} day${
+                getDuration(
+                  booking.start_date,
+                  booking.end_date,
+                ) === 1
+                  ? ""
+                  : "s"
+              }`}
             />
 
             <DetailBox
               icon={IndianRupee}
               label="Total"
-              value={`₹${booking.total.toLocaleString(
-                "en-IN",
-              )}`}
+              value={`₹${Number(
+                booking.total_price,
+              ).toLocaleString("en-IN")}`}
             />
           </div>
 
           <div className="rounded-xl bg-secondary p-4">
+
             <p className="text-sm font-semibold">
-              Rental summary
+              Booking status
             </p>
 
-            <div className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Duration
-                </span>
-                <span>{booking.duration}</span>
-              </div>
+            <div className="mt-3 flex items-center gap-2">
+              <StatusBadge
+                status={booking.status}
+              />
 
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Rental rate
+              {isOwner && (
+                <span className="text-xs text-muted-foreground">
+                  You are the machinery owner
                 </span>
-                <span>
-                  ₹{booking.rate.toLocaleString("en-IN")}
-                </span>
-              </div>
+              )}
 
-              <div className="flex justify-between border-t border-border pt-2 font-semibold">
-                <span>Total</span>
-                <span>
-                  ₹{booking.total.toLocaleString("en-IN")}
+              {isRenter && (
+                <span className="text-xs text-muted-foreground">
+                  You requested this machinery
                 </span>
-              </div>
+              )}
             </div>
           </div>
 
-          {booking.verified && (
-            <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
-
-              <div>
-                <p className="text-sm font-semibold">
-                  Verified equipment provider
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  This prototype marks the owner as verified.
-                  Production verification should include
-                  identity, equipment ownership and contact
-                  verification.
-                </p>
-              </div>
-            </div>
-          )}
-
           <div className="flex flex-col gap-2 sm:flex-row">
-            {booking.status === "Requested" && (
+
+            {canConfirm && (
               <Button
                 className="flex-1"
+                disabled={loading}
                 onClick={onConfirm}
               >
-                Simulate Owner Confirmation
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
+                Confirm Booking
+              </Button>
+            )}
+
+            {canComplete && (
+              <Button
+                className="flex-1"
+                disabled={loading}
+                onClick={onComplete}
+              >
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
+                Mark Completed
               </Button>
             )}
 
@@ -657,9 +953,15 @@ function BookingDetails({
               <Button
                 variant="outline"
                 className="flex-1"
+                disabled={loading}
                 onClick={onCancel}
               >
-                Cancel Booking
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="mr-2 h-4 w-4" />
+                )}
+                Cancel Request
               </Button>
             )}
 
@@ -676,10 +978,6 @@ function BookingDetails({
   );
 }
 
-/* =========================================================
-   TIMELINE
-========================================================= */
-
 function BookingTimeline({
   status,
 }: {
@@ -695,38 +993,42 @@ function BookingTimeline({
       icon: ShieldCheck,
     },
     {
-      label: "In Progress",
-      icon: Tractor,
-    },
-    {
       label: "Completed",
       icon: CheckCircle2,
     },
   ];
 
   const statusIndex =
-    status === "Cancelled"
-      ? -1
-      : steps.findIndex(
-          (step) => step.label === status,
-        );
+    status === "pending"
+      ? 0
+      : status === "confirmed"
+        ? 1
+        : status === "completed"
+          ? 2
+          : -1;
 
   return (
     <div>
+
       <p className="mb-4 text-sm font-semibold">
         Booking progress
       </p>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-3">
+
         {steps.map((step, index) => {
           const Icon = step.icon;
+
           const completed =
             statusIndex >= index;
 
           return (
-            <div key={step.label} className="text-center">
+            <div
+              key={step.label}
+              className="text-center"
+            >
               <div
-                className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${
+                className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full ${
                   completed
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground"
@@ -735,7 +1037,7 @@ function BookingTimeline({
                 <Icon className="h-4 w-4" />
               </div>
 
-              <p className="mt-2 text-[10px] font-medium sm:text-xs">
+              <p className="mt-2 text-xs font-medium">
                 {step.label}
               </p>
             </div>
@@ -743,7 +1045,7 @@ function BookingTimeline({
         })}
       </div>
 
-      {status === "Cancelled" && (
+      {status === "cancelled" && (
         <div className="mt-4 flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           <XCircle className="h-4 w-4" />
           This booking has been cancelled.
@@ -753,25 +1055,22 @@ function BookingTimeline({
   );
 }
 
-/* =========================================================
-   HELPERS
-========================================================= */
-
 function StatusBadge({
   status,
 }: {
   status: BookingStatus;
 }) {
-  const styles: Record<BookingStatus, string> = {
-    Requested:
+  const styles: Record<
+    BookingStatus,
+    string
+  > = {
+    pending:
       "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    Confirmed:
+    confirmed:
       "bg-primary/10 text-primary",
-    "In Progress":
-      "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-    Completed:
+    completed:
       "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    Cancelled:
+    cancelled:
       "bg-destructive/10 text-destructive",
   };
 
@@ -779,7 +1078,7 @@ function StatusBadge({
     <span
       className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${styles[status]}`}
     >
-      {status}
+      {statusLabel(status)}
     </span>
   );
 }
@@ -797,12 +1096,16 @@ function SummaryCard({
 }) {
   return (
     <div className="card-surface p-5">
+
       <div className="flex items-center justify-between">
+
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
           <Icon className="h-5 w-5 text-primary" />
         </div>
 
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold">
+          {value}
+        </p>
       </div>
 
       <p className="mt-4 text-sm font-semibold">
@@ -842,6 +1145,7 @@ function DetailBox({
 }) {
   return (
     <div className="rounded-xl border border-border p-4">
+
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Icon className="h-4 w-4" />
         {label}
@@ -865,6 +1169,7 @@ function FlowStep({
 }) {
   return (
     <div className="rounded-xl border border-border p-4">
+
       <span className="text-xs font-bold text-primary">
         {number}
       </span>
@@ -887,6 +1192,7 @@ function EmptyBookings({
 }) {
   return (
     <div className="card-surface p-10 text-center">
+
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
         <CalendarDays className="h-7 w-7 text-muted-foreground" />
       </div>
@@ -896,11 +1202,13 @@ function EmptyBookings({
       </h2>
 
       <p className="mt-1 text-sm text-muted-foreground">
-        Try another filter or find machinery to create a
-        booking.
+        Your real machinery bookings will appear here.
       </p>
 
-      <Button className="mt-5" onClick={onFind}>
+      <Button
+        className="mt-5"
+        onClick={onFind}
+      >
         Find Machinery
       </Button>
     </div>
